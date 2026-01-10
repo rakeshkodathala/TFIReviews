@@ -1,0 +1,798 @@
+{
+	"info": {
+		"_postman_id": "tfi-reviews-api-collection",
+		"name": "TFI Reviews API",
+		"description": "Complete API collection for TFI Reviews - Tollywood Movie Reviews App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"health"
+							]
+						},
+						"description": "Check if the API is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"auth_token\", jsonData.token);",
+									"    pm.environment.set(\"user_id\", jsonData.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"name\": \"Test User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"auth_token\", jsonData.token);",
+									"    pm.environment.set(\"user_id\", jsonData.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with email and password"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Movies",
+			"item": [
+				{
+					"name": "Get All Movies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movies?page=1&limit=20&sortBy=releaseDate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in title, Telugu title, director",
+									"disabled": true
+								},
+								{
+									"key": "genre",
+									"value": "",
+									"description": "Filter by genre",
+									"disabled": true
+								},
+								{
+									"key": "sortBy",
+									"value": "releaseDate",
+									"description": "Sort field (releaseDate, rating, etc.)"
+								}
+							]
+						},
+						"description": "Get all movies with pagination, search, and filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Movies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movies?search=bahubali",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "bahubali"
+								}
+							]
+						},
+						"description": "Search movies by title, Telugu title, or director"
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Movies by Genre",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movies?genre=Action",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies"
+							],
+							"query": [
+								{
+									"key": "genre",
+									"value": "Action"
+								}
+							]
+						},
+						"description": "Filter movies by genre"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Movie by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movies/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "movie-id-here",
+									"description": "Movie ID"
+								}
+							]
+						},
+						"description": "Get a single movie by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Movie",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Baahubali: The Beginning\",\n    \"titleTelugu\": \"బాహుబలి: ది బిగినింగ్\",\n    \"director\": \"S.S. Rajamouli\",\n    \"cast\": [\n        \"Prabhas\",\n        \"Rana Daggubati\",\n        \"Anushka Shetty\",\n        \"Tamannaah\"\n    ],\n    \"releaseDate\": \"2015-07-10\",\n    \"genre\": [\n        \"Action\",\n        \"Drama\",\n        \"Epic\"\n    ],\n    \"posterUrl\": \"https://example.com/poster.jpg\",\n    \"trailerUrl\": \"https://example.com/trailer.mp4\",\n    \"synopsis\": \"In the kingdom of Mahishmati, Shivudu grows up caring for his adoptive mother and dreaming about going to the mountains. His journey leads him to discover his true identity and fulfill his destiny.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/movies",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies"
+							]
+						},
+						"description": "Create a new movie"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Movie",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 9.2,\n    \"synopsis\": \"Updated synopsis\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/movies/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "movie-id-here"
+								}
+							]
+						},
+						"description": "Update a movie by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Movie",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movies/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movies",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "movie-id-here"
+								}
+							]
+						},
+						"description": "Delete a movie by ID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reviews",
+			"item": [
+				{
+					"name": "Get Reviews for Movie",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/reviews/movie/:movieId?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews",
+								"movie",
+								":movieId"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							],
+							"variable": [
+								{
+									"key": "movieId",
+									"value": "movie-id-here"
+								}
+							]
+						},
+						"description": "Get all reviews for a specific movie"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Review by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/reviews/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "review-id-here"
+								}
+							]
+						},
+						"description": "Get a single review by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Review",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"review_id\", jsonData._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"movieId\": \"{{movie_id}}\",\n    \"userId\": \"{{user_id}}\",\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reviews",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews"
+							]
+						},
+						"description": "Create a new review for a movie. Automatically updates movie rating."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Review by TMDB ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"review_id\", jsonData._id || jsonData.id || jsonData.review?._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tmdbId\": 1511417,\n    \"userId\": \"{{user_id}}\",\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reviews",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews"
+							]
+						},
+						"description": "Create a new review using TMDB movie ID. Movie is auto-imported if not in DB."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Reviews by TMDB ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/reviews/tmdb/:tmdbId?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews",
+								"tmdb",
+								":tmdbId"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							],
+							"variable": [
+								{
+									"key": "tmdbId",
+									"value": "1511417",
+									"description": "TMDB movie ID to get reviews for (Baahubali: The Beginning)"
+								}
+							]
+						},
+						"description": "Get all reviews for a movie using its TMDB ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Review",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 8,\n    \"review\": \"Updated review text\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reviews/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{review_id}}"
+								}
+							]
+						},
+						"description": "Update a review by ID. Automatically recalculates movie rating."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Review",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/reviews/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reviews",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{review_id}}"
+								}
+							]
+						},
+						"description": "Delete a review by ID. Automatically recalculates movie rating."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "External Movies (TMDB)",
+			"item": [
+				{
+					"name": "Search Movies (TMDB)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movie-search/search?query=bahubali&language=en",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movie-search",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "bahubali",
+									"description": "Search query for movie title"
+								},
+								{
+									"key": "year",
+									"value": "",
+									"description": "Filter by release year",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "language",
+									"value": "en",
+									"description": "Language code (e.g. en, te)"
+								}
+							]
+						},
+						"description": "Search movies using TMDB API through backend"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Movie Details (TMDB)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movie-search/movie/:tmdbId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movie-search",
+								"movie",
+								":tmdbId"
+							],
+							"variable": [
+								{
+									"key": "tmdbId",
+									"value": "1511417",
+									"description": "TMDB movie ID (Baahubali: The Beginning)"
+								}
+							]
+						},
+						"description": "Get detailed movie info (cast, crew, trailers) from TMDB via backend. Example uses Baahubali (1511417) which has cast data."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Popular Movies (TMDB)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movie-search/popular?page=1&language=en",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movie-search",
+								"popular"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "language",
+									"value": "en"
+								}
+							]
+						},
+						"description": "Get popular movies from TMDB via backend"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tollywood Movies (TMDB)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movie-search/tollywood?page=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movie-search",
+								"tollywood"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get Telugu (Tollywood) movies from TMDB via backend"
+					},
+					"response": []
+				},
+				{
+					"name": "Import Movie from TMDB to DB",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"movie_id\", jsonData.movie._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/movie-search/import/:tmdbId",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"movie-search",
+								"import",
+								":tmdbId"
+							],
+							"variable": [
+								{
+									"key": "tmdbId",
+									"value": "1511417",
+									"description": "TMDB movie ID to import (Baahubali: The Beginning)"
+								}
+							]
+						},
+						"description": "Import a movie from TMDB into local MongoDB. Saves movie_id to environment."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}
