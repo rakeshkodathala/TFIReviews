@@ -190,7 +190,7 @@ const ActivityScreen: React.FC = () => {
                 >
                   <Ionicons
                     name={ratingStyle.icon}
-                    size={14}
+                    size={10}
                     color={ratingStyle.color}
                   />
                   <Text
@@ -390,17 +390,17 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
     gap: 3,
   },
   ratingText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "700",
   },
   ratingDenominator: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: "600",
     opacity: 0.9,
   },

@@ -15,6 +15,12 @@ import ActivityScreen from "../screens/ActivityScreen";
 import AccountScreen from "../screens/AccountScreen";
 import MovieDetailsScreen from "../screens/MovieDetailsScreen";
 import CreateReviewScreen from "../screens/CreateReviewScreen";
+import CastDetailsScreen from "../screens/CastDetailsScreen";
+import MyReviewsScreen from "../screens/MyReviewsScreen";
+import WatchlistScreen from "../screens/WatchlistScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
+import AboutScreen from "../screens/AboutScreen";
 
 // Navigation types
 export type RootStackParamList = {
@@ -36,25 +42,34 @@ export type MainTabParamList = {
 export type HomeStackParamList = {
   Home: undefined;
   MovieDetails: { movie: any };
-  CreateReview: { movie: any };
+  CreateReview: { movie: any; review?: any };
+  CastDetails: { personId: number; personName: string };
 };
 
 export type SearchStackParamList = {
   Search: undefined;
   MovieDetails: { movie: any };
-  CreateReview: { movie: any };
+  CreateReview: { movie: any; review?: any };
+  CastDetails: { personId: number; personName: string };
 };
 
 export type ActivityStackParamList = {
   Activity: undefined;
   MovieDetails: { movie: any };
-  CreateReview: { movie: any };
+  CreateReview: { movie: any; review?: any };
+  CastDetails: { personId: number; personName: string };
 };
 
 export type AccountStackParamList = {
   Account: undefined;
   MovieDetails: { movie: any };
-  CreateReview: { movie: any };
+  CreateReview: { movie: any; review?: any };
+  CastDetails: { personId: number; personName: string };
+  MyReviews: undefined;
+  Watchlist: undefined;
+  Settings: undefined;
+  Notifications: undefined;
+  About: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -89,6 +104,9 @@ const HomeStack = () => {
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
+        headerBackTitle: "",
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
       }}
     >
       <HomeStackNav.Screen
@@ -107,9 +125,8 @@ const HomeStack = () => {
         name="MovieDetails"
         component={MovieDetailsScreen}
         options={{
-          title: "Movie Details",
-          headerStyle: { backgroundColor: "#1a1a1a" },
-          headerTintColor: "#fff",
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
       <HomeStackNav.Screen
@@ -119,6 +136,16 @@ const HomeStack = () => {
           title: "Write a Review",
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
+          headerBackTitle: "",
+          gestureEnabled: true,
+        }}
+      />
+      <HomeStackNav.Screen
+        name="CastDetails"
+        component={CastDetailsScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
     </HomeStackNav.Navigator>
@@ -134,6 +161,9 @@ const SearchStack = () => {
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
+        headerBackTitle: "",
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
       }}
     >
       <SearchStackNav.Screen
@@ -147,9 +177,8 @@ const SearchStack = () => {
         name="MovieDetails"
         component={MovieDetailsScreen}
         options={{
-          title: "Movie Details",
-          headerStyle: { backgroundColor: "#1a1a1a" },
-          headerTintColor: "#fff",
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
       <SearchStackNav.Screen
@@ -159,6 +188,16 @@ const SearchStack = () => {
           title: "Write a Review",
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
+          headerBackTitle: "",
+          gestureEnabled: true,
+        }}
+      />
+      <SearchStackNav.Screen
+        name="CastDetails"
+        component={CastDetailsScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
     </SearchStackNav.Navigator>
@@ -174,6 +213,9 @@ const ActivityStack = () => {
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
+        headerBackTitle: "",
+        gestureEnabled: true,
+        gestureDirection: "horizontal",
       }}
     >
       <ActivityStackNav.Screen
@@ -187,9 +229,8 @@ const ActivityStack = () => {
         name="MovieDetails"
         component={MovieDetailsScreen}
         options={{
-          title: "Movie Details",
-          headerStyle: { backgroundColor: "#1a1a1a" },
-          headerTintColor: "#fff",
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
       <ActivityStackNav.Screen
@@ -199,6 +240,16 @@ const ActivityStack = () => {
           title: "Write a Review",
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
+          headerBackTitle: "",
+          gestureEnabled: true,
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="CastDetails"
+        component={CastDetailsScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
     </ActivityStackNav.Navigator>
@@ -214,6 +265,8 @@ const AccountStack = () => {
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
+        headerBackTitle: "",
+        gestureEnabled: true,
       }}
     >
       <AccountStackNav.Screen
@@ -227,9 +280,8 @@ const AccountStack = () => {
         name="MovieDetails"
         component={MovieDetailsScreen}
         options={{
-          title: "Movie Details",
-          headerStyle: { backgroundColor: "#1a1a1a" },
-          headerTintColor: "#fff",
+          headerShown: false,
+          gestureEnabled: true,
         }}
       />
       <AccountStackNav.Screen
@@ -239,6 +291,50 @@ const AccountStack = () => {
           title: "Write a Review",
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
+          gestureEnabled: true,
+        }}
+      />
+      <AccountStackNav.Screen
+        name="CastDetails"
+        component={CastDetailsScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <AccountStackNav.Screen
+        name="MyReviews"
+        component={MyReviewsScreen}
+        options={{
+          title: "My Reviews",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="Watchlist"
+        component={WatchlistScreen}
+        options={{
+          title: "Watchlist",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: "Settings",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          title: "Notifications",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="About"
+        component={AboutScreen}
+        options={{
+          title: "About",
         }}
       />
     </AccountStackNav.Navigator>

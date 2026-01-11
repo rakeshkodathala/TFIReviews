@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Dimensions,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated,
 } from "react-native";
 import { movieSearchService, moviesService } from "../services/api";
 import { useNavigation } from "@react-navigation/native";
@@ -88,12 +89,13 @@ const SearchScreen: React.FC = () => {
     null
   );
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
-  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+  const borderColorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadRecentSearches();
     loadPopularMovies();
-    loadTrendingSearches();
 
     // Rotate placeholder every 3 seconds
     const placeholderInterval = setInterval(() => {
@@ -102,6 +104,15 @@ const SearchScreen: React.FC = () => {
 
     return () => clearInterval(placeholderInterval);
   }, []);
+
+  // Animate border color on focus
+  useEffect(() => {
+    Animated.timing(borderColorAnim, {
+      toValue: isFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isFocused]);
 
   // Debounced search effect - triggers search as user types
   useEffect(() => {
@@ -147,34 +158,6 @@ const SearchScreen: React.FC = () => {
       }
     } catch (error) {
       console.error("Error loading recent searches:", error);
-    }
-  };
-
-  const loadTrendingSearches = async (movies?: Movie[]) => {
-    try {
-      // Get popular movie titles as trending searches
-      // For now, use common Telugu movie titles that are likely popular
-      const defaultTrending = ["RRR", "Baahubali", "Pushpa", "KGF", "Salaar"];
-
-      // Use provided movies or current popularMovies state
-      const moviesToUse = movies || popularMovies;
-
-      // Try to get from popular movies if available
-      if (moviesToUse.length > 0) {
-        const titles = moviesToUse
-          .slice(0, 5)
-          .map((m) => m.title)
-          .filter((t) => t && t.length < 20); // Filter out very long titles
-        if (titles.length > 0) {
-          setTrendingSearches(titles);
-          return;
-        }
-      }
-
-      setTrendingSearches(defaultTrending);
-    } catch (error) {
-      console.error("Error loading trending searches:", error);
-      setTrendingSearches(["RRR", "Baahubali", "Pushpa"]);
     }
   };
 
@@ -250,9 +233,6 @@ const SearchScreen: React.FC = () => {
       );
 
       setPopularMovies(finalMovies);
-
-      // Update trending searches after popular movies load
-      loadTrendingSearches(finalMovies);
     } catch (error) {
       console.error("Error loading popular movies:", error);
       setPopularMovies([]);
@@ -607,11 +587,33 @@ const SearchScreen: React.FC = () => {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
+          <Animated.View
+            style={[
+              styles.searchInputContainer,
+              {
+                borderColor: borderColorAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["#333", "#007AFF"],
+                }),
+                shadowOpacity: borderColorAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.3],
+                }),
+              },
+            ]}
+          >
+            <View style={styles.searchIconContainer}>
+              <Ionicons
+                name="search"
+                size={20}
+                color={isFocused ? "#007AFF" : "#666"}
+              />
+            </View>
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               placeholder={PLACEHOLDER_MESSAGES[currentPlaceholder]}
-              placeholderTextColor="#999"
+              placeholderTextColor="#666"
               value={searchQuery}
               onChangeText={(text) => {
                 setSearchQuery(text);
@@ -620,6 +622,8 @@ const SearchScreen: React.FC = () => {
                   setMovies([]);
                 }
               }}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               onSubmitEditing={(e) => {
                 const query = e.nativeEvent.text || searchQuery;
                 console.log("Search submitted with query:", query);
@@ -643,37 +647,12 @@ const SearchScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.clearButton}
                 onPress={handleClearSearch}
+                activeOpacity={0.7}
               >
-                <Text style={styles.clearButtonText}>✕</Text>
+                <Ionicons name="close-circle" size={20} color="#999" />
               </TouchableOpacity>
             )}
-          </View>
-
-          {/* Trending Searches */}
-          {!searchQuery.trim() &&
-            !selectedGenre &&
-            trendingSearches.length > 0 && (
-              <View style={styles.trendingSearchesContainer}>
-                <Text style={styles.trendingLabel}>Trending:</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.trendingScrollContent}
-                >
-                  {trendingSearches.map((search, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.trendingChip}
-                      onPress={() => handleRecentSearchPress(search)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="flame" size={12} color="#FF6B35" />
-                      <Text style={styles.trendingChipText}>{search}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+          </Animated.View>
         </View>
 
         {renderGenreFilter()}
@@ -851,69 +830,40 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     padding: 12,
-    paddingBottom: 8,
+    paddingBottom: 4,
     backgroundColor: "#1a1a1a",
   },
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    position: "relative",
-    marginBottom: 8,
-  },
-  trendingSearchesContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  trendingLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#999",
-    marginRight: 8,
-  },
-  trendingScrollContent: {
-    gap: 6,
-  },
-  trendingChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     backgroundColor: "#2a2a2a",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#333",
-    gap: 4,
-    marginRight: 6,
-  },
-  trendingChipText: {
-    color: "#999",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  searchInput: {
-    flex: 1,
-    height: 42,
+    borderRadius: 20,
     borderWidth: 2,
-    borderColor: "#007AFF",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    backgroundColor: "#2a2a2a",
-    color: "#fff",
+    borderColor: "#333",
+    marginBottom: 8,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 8,
+    elevation: 2,
   },
-  clearButton: {
-    position: "absolute",
-    right: 12,
-    width: 24,
-    height: 24,
+  searchIconContainer: {
+    paddingLeft: 12,
+    paddingRight: 6,
     justifyContent: "center",
     alignItems: "center",
   },
-  clearButtonText: {
-    color: "#999",
-    fontSize: 14,
-    fontWeight: "600",
+  searchInput: {
+    flex: 1,
+    height: 40,
+    paddingRight: 12,
+    fontSize: 15,
+    color: "#fff",
+  },
+  clearButton: {
+    paddingRight: 14,
+    paddingLeft: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollView: {
     flex: 1,

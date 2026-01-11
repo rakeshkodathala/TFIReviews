@@ -112,6 +112,21 @@ router.get('/genre/:genreId', async (req: Request, res: Response) => {
 });
 
 /**
+ * Get person (cast/crew) details from TMDB
+ * GET /api/movie-search/person/:personId
+ */
+router.get('/person/:personId', async (req: Request, res: Response) => {
+  try {
+    const { personId } = req.params;
+    const person = await movieApiService.getPersonById(personId);
+    
+    res.json(person);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Import movie from external API to our database
  * POST /api/movie-search/import/:externalId
  */

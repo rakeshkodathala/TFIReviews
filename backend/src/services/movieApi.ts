@@ -161,6 +161,50 @@ class MovieApiService {
   }
 
   /**
+   * Get person details by ID from TMDB API
+   */
+  async getPersonById(id: string | number): Promise<any> {
+    try {
+      const response = await this.apiClient.get(`/person/${id}`, {
+        params: {
+          language: 'en',
+          append_to_response: 'movie_credits,images',
+        },
+      });
+
+      const person = response.data;
+      
+      return {
+        id: person.id,
+        name: person.name,
+        biography: person.biography || '',
+        birthday: person.birthday || null,
+        placeOfBirth: person.place_of_birth || null,
+        profilePath: person.profile_path 
+          ? `https://image.tmdb.org/t/p/w500${person.profile_path}` 
+          : null,
+        knownForDepartment: person.known_for_department || '',
+        popularity: person.popularity || 0,
+        movies: person.movie_credits?.cast?.slice(0, 10).map((movie: any) => ({
+          id: movie.id,
+          title: movie.title,
+          posterPath: movie.poster_path 
+            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
+            : null,
+          releaseDate: movie.release_date,
+          character: movie.character || '',
+        })) || [],
+        images: person.images?.profiles?.slice(0, 5).map((img: any) => ({
+          path: `https://image.tmdb.org/t/p/w500${img.file_path}`,
+        })) || [],
+      };
+    } catch (error: any) {
+      console.error('Error fetching person:', error.message);
+      throw new Error(`Failed to fetch person: ${error.message}`);
+    }
+  }
+
+  /**
    * Get movies by genre using TMDB discover API
    */
   async getMoviesByGenre(genreId: number, params?: MovieSearchParams): Promise<ExternalMovie[]> {
@@ -228,19 +272,40 @@ class MovieApiService {
       || movie.director 
       || 'Unknown';
 
-    // Extract cast - prioritize credits.cast, fallback to cast array
-    let cast: string[] = [];
+    // Extract cast with photos and IDs - prioritize credits.cast, fallback to cast array
+    let cast: any[] = [];
     if (movie.credits?.cast && Array.isArray(movie.credits.cast) && movie.credits.cast.length > 0) {
-      // Get top 10 cast members
+      // Get top 10 cast members with full details
       cast = movie.credits.cast
         .slice(0, 10)
-        .map((actor: any) => actor.name || actor.original_name)
-        .filter((name: string) => name); // Remove any null/undefined
+        .map((actor: any) => ({
+          id: actor.id,
+          name: actor.name || actor.original_name,
+          character: actor.character || '',
+          profilePath: actor.profile_path 
+            ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` 
+            : null,
+          tmdbId: actor.id,
+        }))
+        .filter((actor: any) => actor.name); // Remove any null/undefined
     } else if (movie.cast && Array.isArray(movie.cast)) {
       cast = movie.cast
         .slice(0, 10)
-        .map((actor: any) => (typeof actor === 'string' ? actor : actor.name))
-        .filter((name: string) => name);
+        .map((actor: any) => {
+          if (typeof actor === 'string') {
+            return { name: actor, id: null, profilePath: null, character: '' };
+          }
+          return {
+            id: actor.id || null,
+            name: actor.name || '',
+            character: actor.character || '',
+            profilePath: actor.profile_path 
+              ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` 
+              : null,
+            tmdbId: actor.id || null,
+          };
+        })
+        .filter((actor: any) => actor.name);
     }
 
     // Extract genres
@@ -294,11 +359,28 @@ class MovieApiService {
       ? Math.max(0, Math.min(10, externalMovie.rating)) // Ensure it's between 0-10
       : 0;
     
+    // Convert cast array - handle both string array and object array formats
+    // The database expects strings, but we may receive objects with name, id, etc.
+    let castArray: string[] = [];
+    if (Array.isArray(externalMovie.cast)) {
+      castArray = externalMovie.cast.map((item: any) => {
+        // If it's already a string, return it
+        if (typeof item === 'string') {
+          return item;
+        }
+        // If it's an object, extract the name
+        if (item && typeof item === 'object' && item.name) {
+          return item.name;
+        }
+        return '';
+      }).filter((name: string) => name.length > 0); // Remove empty strings
+    }
+    
     return {
       title: externalMovie.title,
       titleTelugu: externalMovie.titleTelugu,
       director: externalMovie.director || 'Unknown',
-      cast: Array.isArray(externalMovie.cast) ? externalMovie.cast : [],
+      cast: castArray, // Now always an array of strings
       releaseDate: externalMovie.releaseDate 
         ? new Date(externalMovie.releaseDate) 
         : new Date(),

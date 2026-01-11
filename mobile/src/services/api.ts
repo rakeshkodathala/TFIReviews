@@ -206,4 +206,9 @@ export const movieSearchService = {
     const response = await apiClient.post(`/movie-search/import/${tmdbId}`);
     return response.data;
   },
+
+  async getPersonDetails(personId: number) {
+    const response = await apiClient.get(`/movie-search/person/${personId}`);
+    return response.data;
+  },
 };

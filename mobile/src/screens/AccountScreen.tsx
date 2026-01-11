@@ -21,6 +21,8 @@ import { useAuth } from "../context/AuthContext";
 import { authService, watchlistService } from "../services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { AccountStackParamList } from "../navigation/AppNavigator";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -32,9 +34,14 @@ interface UserStats {
   memberSince: string;
 }
 
+type AccountScreenNavigationProp = NativeStackNavigationProp<
+  AccountStackParamList,
+  "Account"
+>;
+
 const AccountScreen: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<AccountScreenNavigationProp>();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(user?.name || "");
@@ -236,7 +243,7 @@ const AccountScreen: React.FC = () => {
     color: string
   ) => (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Ionicons name={icon as any} size={24} color={color} />
+      <Ionicons name={icon as any} size={18} color={color} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -292,13 +299,6 @@ const AccountScreen: React.FC = () => {
                 {stats && (
                   <View style={styles.quickStats}>
                     <View style={styles.quickStatItem}>
-                      <Ionicons name="star" size={14} color="#FFD700" />
-                      <Text style={styles.quickStatText}>
-                        {stats.avgRating.toFixed(1)} avg
-                      </Text>
-                    </View>
-                    <View style={styles.quickStatDivider} />
-                    <View style={styles.quickStatItem}>
                       <Ionicons
                         name="document-text"
                         size={14}
@@ -340,12 +340,6 @@ const AccountScreen: React.FC = () => {
                     "#007AFF"
                   )}
                   {renderStatCard(
-                    "star",
-                    "Avg Rating",
-                    stats.avgRating.toFixed(1),
-                    "#FFD700"
-                  )}
-                  {renderStatCard(
                     "calendar",
                     "This Month",
                     stats.reviewsThisMonth,
@@ -371,11 +365,7 @@ const AccountScreen: React.FC = () => {
                   style={styles.contentCard}
                   activeOpacity={0.7}
                   onPress={() => {
-                    // Navigate to reviews screen
-                    Alert.alert(
-                      "Coming Soon",
-                      "Full reviews screen coming soon!"
-                    );
+                    navigation.navigate("MyReviews");
                   }}
                 >
                   <View style={styles.contentCardHeader}>
@@ -453,7 +443,7 @@ const AccountScreen: React.FC = () => {
                   style={styles.contentCard}
                   activeOpacity={0.7}
                   onPress={() => {
-                    Alert.alert("Coming Soon", "Watchlist screen coming soon!");
+                    navigation.navigate("Watchlist");
                   }}
                 >
                   <View style={styles.contentCardHeader}>
@@ -498,72 +488,86 @@ const AccountScreen: React.FC = () => {
                 {editing ? "Edit Profile" : "Profile Information"}
               </Text>
 
-              {/* Name Field */}
-              <View style={styles.fieldContainer}>
-                <View style={styles.fieldLabelContainer}>
-                  <View style={styles.iconContainer}>
-                    <Ionicons name="person-outline" size={18} color="#007AFF" />
-                  </View>
-                  <Text style={styles.fieldLabel}>Name</Text>
-                </View>
-                {editing ? (
-                  <TextInput
-                    style={styles.input}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter your name"
-                    placeholderTextColor="#666"
-                  />
-                ) : (
-                  <Text style={styles.fieldValue}>
-                    {user?.name || (
-                      <Text style={styles.emptyValue}>Not set</Text>
-                    )}
-                  </Text>
-                )}
-              </View>
-
-              {/* Location Field */}
-              <View style={styles.fieldContainer}>
-                <View style={styles.fieldLabelContainer}>
-                  <View style={styles.iconContainer}>
-                    <Ionicons
-                      name="location-outline"
-                      size={18}
-                      color="#007AFF"
-                    />
-                  </View>
-                  <Text style={styles.fieldLabel}>Location</Text>
-                </View>
-                {editing ? (
-                  <View style={styles.locationInputContainer}>
-                    <TextInput
-                      style={[styles.input, styles.locationInput]}
-                      value={location}
-                      onChangeText={setLocation}
-                      placeholder="Enter your location"
-                      placeholderTextColor="#666"
-                    />
-                    <TouchableOpacity
-                      style={styles.locationButton}
-                      onPress={pickLocation}
-                      disabled={loading}
-                      activeOpacity={0.7}
-                    >
-                      {loading ? (
-                        <ActivityIndicator size="small" color="#007AFF" />
+              <View style={styles.listContainer}>
+                {/* Name Field */}
+                <View style={[styles.listItem, styles.listItemFirst]}>
+                  <View style={styles.listItemLeft}>
+                    <View style={styles.listIconContainer}>
+                      <Ionicons
+                        name="person-outline"
+                        size={18}
+                        color="#007AFF"
+                      />
+                    </View>
+                    <View style={styles.listItemContent}>
+                      <Text style={styles.listItemLabel}>Name</Text>
+                      {editing ? (
+                        <TextInput
+                          style={styles.listItemInput}
+                          value={name}
+                          onChangeText={setName}
+                          placeholder="Enter your name"
+                          placeholderTextColor="#666"
+                        />
                       ) : (
-                        <Ionicons name="locate" size={20} color="#007AFF" />
+                        <Text style={styles.listItemValue}>
+                          {user?.name || (
+                            <Text style={styles.emptyValue}>Not set</Text>
+                          )}
+                        </Text>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   </View>
-                ) : (
-                  <Text style={styles.fieldValue}>
-                    {user?.location || (
-                      <Text style={styles.emptyValue}>Not set</Text>
-                    )}
-                  </Text>
-                )}
+                </View>
+
+                {/* Location Field */}
+                <View style={[styles.listItem, styles.listItemLast]}>
+                  <View style={styles.listItemLeft}>
+                    <View style={styles.listIconContainer}>
+                      <Ionicons
+                        name="location-outline"
+                        size={18}
+                        color="#007AFF"
+                      />
+                    </View>
+                    <View style={styles.listItemContent}>
+                      <Text style={styles.listItemLabel}>Location</Text>
+                      {editing ? (
+                        <View style={styles.locationInputContainer}>
+                          <TextInput
+                            style={[styles.listItemInput, styles.locationInput]}
+                            value={location}
+                            onChangeText={setLocation}
+                            placeholder="Enter your location"
+                            placeholderTextColor="#666"
+                          />
+                          <TouchableOpacity
+                            style={styles.locationButton}
+                            onPress={pickLocation}
+                            disabled={loading}
+                            activeOpacity={0.7}
+                          >
+                            {loading ? (
+                              <ActivityIndicator size="small" color="#007AFF" />
+                            ) : (
+                              <Ionicons
+                                name="locate"
+                                size={18}
+                                color="#007AFF"
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <Text style={styles.listItemValue}>
+                          {user?.location || (
+                            <Text style={styles.emptyValue}>Not set</Text>
+                          )}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </View>
               </View>
             </View>
 
@@ -572,47 +576,67 @@ const AccountScreen: React.FC = () => {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Settings</Text>
 
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
-                  <View style={styles.menuItemLeft}>
-                    <View style={styles.menuIconContainer}>
-                      <Ionicons
-                        name="settings-outline"
-                        size={20}
-                        color="#007AFF"
-                      />
+                <View style={styles.listContainer}>
+                  <TouchableOpacity
+                    style={[styles.listItem, styles.listItemFirst]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      navigation.navigate("Settings");
+                    }}
+                  >
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="settings-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <Text style={styles.listItemValue}>App Settings</Text>
                     </View>
-                    <Text style={styles.menuItemText}>App Settings</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#666" />
-                </TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={18} color="#666" />
+                  </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
-                  <View style={styles.menuItemLeft}>
-                    <View style={styles.menuIconContainer}>
-                      <Ionicons
-                        name="notifications-outline"
-                        size={20}
-                        color="#007AFF"
-                      />
+                  <TouchableOpacity
+                    style={styles.listItem}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      navigation.navigate("Notifications");
+                    }}
+                  >
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="notifications-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <Text style={styles.listItemValue}>Notifications</Text>
                     </View>
-                    <Text style={styles.menuItemText}>Notifications</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#666" />
-                </TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={18} color="#666" />
+                  </TouchableOpacity>
 
-                <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
-                  <View style={styles.menuItemLeft}>
-                    <View style={styles.menuIconContainer}>
-                      <Ionicons
-                        name="information-circle-outline"
-                        size={20}
-                        color="#007AFF"
-                      />
+                  <TouchableOpacity
+                    style={[styles.listItem, styles.listItemLast]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      navigation.navigate("About");
+                    }}
+                  >
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <Text style={styles.listItemValue}>About</Text>
                     </View>
-                    <Text style={styles.menuItemText}>About</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#666" />
-                </TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={18} color="#666" />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -832,22 +856,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    width: 120,
+    width: 100,
     backgroundColor: "#2a2a2a",
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     borderLeftWidth: 3,
     marginRight: 8,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: "#fff",
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 6,
+    marginBottom: 3,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#999",
     fontWeight: "500",
   },
@@ -962,6 +986,71 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#007AFF",
     fontWeight: "600",
+  },
+  listContainer: {
+    backgroundColor: "#2a2a2a",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: "#2a2a2a",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  listItemFirst: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  listItemLast: {
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  listItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  listIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#007AFF15",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listItemContent: {
+    flex: 1,
+  },
+  listItemLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  listItemValue: {
+    fontSize: 15,
+    color: "#fff",
+    fontWeight: "500",
+  },
+  listItemInput: {
+    fontSize: 15,
+    color: "#fff",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginTop: 4,
   },
   fieldContainer: {
     backgroundColor: "#2a2a2a",

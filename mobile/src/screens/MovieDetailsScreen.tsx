@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,24 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  Animated,
+  Share,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { movieSearchService, reviewsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HomeStackParamList } from '../navigation/AppNavigator';
 
 type MovieDetailsScreenProps = NativeStackScreenProps<HomeStackParamList, 'MovieDetails'>;
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HERO_HEIGHT = 500;
+const HEADER_HEIGHT = 60;
+const STICKY_HEADER_THRESHOLD = HERO_HEIGHT - HEADER_HEIGHT - 100;
 
 const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, route }) => {
   const { movie: initialMovie } = route.params;
@@ -22,25 +33,50 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const [reviewSort, setReviewSort] = useState<'recent' | 'highest' | 'lowest'>('recent');
+  const { isAuthenticated, user } = useAuth();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Find user's review
+  const userReview = reviews.find((r) => {
+    const reviewUserId = r.userId?._id || r.userId?.id;
+    const currentUserId = user?._id || user?.id;
+    return reviewUserId === currentUserId;
+  });
+
+  // Animate content on load
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   useEffect(() => {
     const movieData = initialMovie;
     if (movieData) {
-      // Load movie details only if tmdbId exists
       if (movieData.tmdbId) {
         loadMovieDetails(movieData.tmdbId);
       } else {
         setLoading(false);
       }
-      // Load reviews
       loadReviews(movieData);
     } else {
       setLoading(false);
       setLoadingReviews(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
+
+  // Refresh reviews when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (initialMovie) {
+        loadReviews(initialMovie);
+      }
+    }, [initialMovie])
+  );
 
   const loadMovieDetails = async (tmdbId: number) => {
     try {
@@ -77,8 +113,88 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
       Alert.alert('Login Required', 'Please login to write a review');
       return;
     }
-    navigation.navigate('CreateReview', { movie });
+    if (userReview) {
+      navigation.navigate('CreateReview', { movie, review: userReview });
+    } else {
+      navigation.navigate('CreateReview', { movie });
+    }
   };
+
+  const handleRateIt = () => {
+    if (!isAuthenticated) {
+      Alert.alert('Login Required', 'Please login to rate this movie');
+      return;
+    }
+    handleWriteReview();
+  };
+
+  const handleShare = async () => {
+    try {
+      const rating = movie.rating ? `${movie.rating.toFixed(1)}/10` : '';
+      const message = `Check out "${movie.title}"${rating ? ` (${rating})` : ''} on TFI Reviews!`;
+      
+      await Share.share({
+        message,
+        title: movie.title,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const getRatingColor = (rating: number) => {
+    if (rating >= 8) return '#4CAF50'; // Green
+    if (rating >= 6) return '#FFC107'; // Yellow
+    return '#F44336'; // Red
+  };
+
+  const getRatingLabel = (rating: number) => {
+    if (rating >= 9) return 'Masterpiece';
+    if (rating >= 8) return 'Excellent';
+    if (rating >= 7) return 'Good';
+    if (rating >= 6) return 'Decent';
+    if (rating >= 5) return 'Average';
+    return 'Skip';
+  };
+
+  // Calculate average rating from reviews
+  const communityRating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+    : 0;
+
+  // Sort reviews
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (reviewSort === 'highest') return (b.rating || 0) - (a.rating || 0);
+    if (reviewSort === 'lowest') return (a.rating || 0) - (b.rating || 0);
+    // Recent (default)
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  // Get top review (highest rated)
+  const topReview = sortedReviews.length > 0 && reviewSort === 'recent'
+    ? sortedReviews.reduce((top, current) => 
+        (current.rating || 0) > (top.rating || 0) ? current : top
+      )
+    : null;
+
+  // Get backdrop URL
+  const backdropUrl = movie.backdrop_path
+    ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`
+    : movie.posterUrl;
+
+  // Parallax animation for backdrop
+  const backdropTranslateY = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT],
+    outputRange: [0, HERO_HEIGHT * 0.5],
+    extrapolate: 'clamp',
+  });
+
+  // Sticky header opacity
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [STICKY_HEADER_THRESHOLD, STICKY_HEADER_THRESHOLD + 50],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   if (loading) {
     return (
@@ -88,94 +204,571 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
     );
   }
 
-  return (
-    <ScrollView style={styles.container}>
-      {movie.posterUrl && (
-        <Image source={{ uri: movie.posterUrl }} style={styles.poster} />
-      )}
-      
-      <View style={styles.content}>
-        <Text style={styles.title}>{movie.title || 'Untitled'}</Text>
-        
-        {movie.titleTelugu && (
-          <Text style={styles.titleTelugu}>{movie.titleTelugu}</Text>
-        )}
+  const releaseYear = movie.releaseDate
+    ? new Date(movie.releaseDate).getFullYear()
+    : null;
 
-        <View style={styles.metaContainer}>
-          {movie.rating && (
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Rating</Text>
-              <Text style={styles.metaValue}>⭐ {movie.rating.toFixed(1)}</Text>
+  return (
+    <View style={styles.container}>
+      {/* Sticky Header */}
+      <Animated.View
+        style={[
+          styles.stickyHeader,
+          {
+            opacity: headerOpacity,
+            pointerEvents: headerOpacity._value > 0.5 ? 'auto' : 'none',
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.stickyHeaderTitle} numberOfLines={1}>
+          {movie.title || 'Movie'}
+        </Text>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <Ionicons name="share-outline" size={22} color="#fff" />
+        </TouchableOpacity>
+      </Animated.View>
+
+      <ScrollView
+        style={styles.scrollView}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Section */}
+        <View style={styles.heroContainer}>
+          <Animated.View
+            style={[
+              styles.backdropContainer,
+              { transform: [{ translateY: backdropTranslateY }] },
+            ]}
+          >
+            {backdropUrl && (
+              <Image
+                source={{ uri: backdropUrl }}
+                style={styles.backdrop}
+                resizeMode="cover"
+              />
+            )}
+          </Animated.View>
+          
+          {/* Gradient Overlay */}
+          <View style={styles.gradientOverlay} />
+          
+          {/* Hero Content */}
+          <Animated.View
+            style={[
+              styles.heroContent,
+              { opacity: fadeAnim },
+            ]}
+          >
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.heroBackButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Share Button */}
+            <TouchableOpacity
+              style={styles.heroShareButton}
+              onPress={handleShare}
+            >
+              <Ionicons name="share-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Poster and Info */}
+            <View style={styles.heroMainContent}>
+              {movie.posterUrl && (
+                <Image
+                  source={{ uri: movie.posterUrl }}
+                  style={styles.poster}
+                  resizeMode="cover"
+                />
+              )}
+              
+              <View style={styles.heroInfo}>
+                <View style={styles.heroTitleRow}>
+                  <View style={styles.heroTitleContainer}>
+                    <Text style={styles.title}>{movie.title || 'Untitled'}</Text>
+                    
+                    {movie.titleTelugu && (
+                      <Text style={styles.titleTelugu}>{movie.titleTelugu}</Text>
+                    )}
+                    
+                    <View style={styles.heroMeta}>
+                      {releaseYear && (
+                        <Text style={styles.heroMetaText}>{releaseYear}</Text>
+                      )}
+                      {movie.genre && movie.genre.length > 0 && releaseYear && (
+                        <Text style={styles.heroMetaText}> • </Text>
+                      )}
+                      {movie.genre && movie.genre.length > 0 && (
+                        <Text style={styles.heroMetaText}>
+                          {movie.genre.slice(0, 2).join(', ')}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  
+                  {/* Rating Badge in Hero */}
+                  {movie.rating !== undefined && movie.rating > 0 && (
+                    <Animated.View
+                      style={[
+                        { opacity: fadeAnim },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.heroRatingBadge,
+                          { borderColor: getRatingColor(movie.rating) },
+                        ]}
+                      >
+                        <Text style={styles.heroRatingNumber}>
+                          {movie.rating.toFixed(1)}
+                        </Text>
+                        <Text style={styles.heroRatingLabel}>TFI</Text>
+                      </View>
+                    </Animated.View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+
+
+        <Animated.View
+          style={[
+            styles.content,
+            { opacity: fadeAnim },
+          ]}
+        >
+          {/* Primary CTA - Write Review */}
+          {!userReview && (
+            <TouchableOpacity
+              style={styles.primaryCTA}
+              onPress={handleWriteReview}
+              activeOpacity={0.8}
+            >
+              <View style={styles.primaryCTAContent}>
+                <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+                <View style={styles.primaryCTAText}>
+                  <Text style={styles.primaryCTATitle}>Share Your Thoughts</Text>
+                  <Text style={styles.primaryCTASubtitle}>
+                    {reviews.length === 0
+                      ? 'Be the first to review this movie'
+                      : `${reviews.length} people have reviewed this`}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
+
+          {/* Your Rating Card - Personal Connection */}
+          {userReview && (
+            <View style={styles.ratingCard}>
+              <View style={styles.ratingCardHeader}>
+                <View style={styles.ratingCardTitleRow}>
+                  <Ionicons name="star" size={20} color="#FFD700" />
+                  <Text style={styles.ratingCardTitle}>Your Rating</Text>
+                </View>
+                <TouchableOpacity onPress={handleWriteReview}>
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.ratingCardContent}>
+                <View
+                  style={[
+                    styles.yourRatingBadge,
+                    { borderColor: getRatingColor(userReview.rating) },
+                  ]}
+                >
+                  <Text style={styles.yourRatingNumber}>
+                    {userReview.rating}/10
+                  </Text>
+                </View>
+                <View style={styles.ratingCardInfo}>
+                  <Text style={styles.ratingCardMessage}>
+                    {userReview.rating >= 8
+                      ? "You loved this! 🎬"
+                      : userReview.rating >= 6
+                      ? "You liked this 👍"
+                      : "You didn't enjoy this"}
+                  </Text>
+                  {userReview.review && (
+                    <Text style={styles.ratingCardSnippet} numberOfLines={2}>
+                      "{userReview.review}"
+                    </Text>
+                  )}
+                  <TouchableOpacity
+                    style={styles.viewFullReviewButton}
+                    onPress={handleWriteReview}
+                  >
+                    <Text style={styles.viewFullReviewText}>View Full Review</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           )}
-          {movie.releaseDate && (
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>Release</Text>
-              <Text style={styles.metaValue}>
-                {new Date(movie.releaseDate).getFullYear()}
+
+          {/* Community Rating Card - Social Proof */}
+          {reviews.length > 0 && (
+            <View style={styles.ratingCard}>
+              <View style={styles.ratingCardTitleRow}>
+                <Ionicons name="people" size={20} color="#007AFF" />
+                <Text style={styles.ratingCardTitle}>Community Rating</Text>
+              </View>
+              <View style={styles.ratingCardContent}>
+                <View style={styles.communityRatingBadge}>
+                  <Text style={styles.communityRatingNumber}>
+                    {communityRating.toFixed(1)}
+                  </Text>
+                  <Text style={styles.communityRatingLabel}>/10</Text>
+                </View>
+                <View style={styles.ratingCardInfo}>
+                  <Text style={styles.ratingCardMessage}>
+                    from {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                  </Text>
+                  {movie.totalReviews && movie.totalReviews > reviews.length && (
+                    <Text style={styles.ratingCardSubtext}>
+                      {movie.totalReviews} total reviews
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Top Review Highlight - Engagement Hook */}
+          {topReview && topReview._id !== userReview?._id && (
+            <View style={styles.highlightCard}>
+              <View style={styles.highlightHeader}>
+                <Ionicons name="trophy" size={18} color="#FFD700" />
+                <Text style={styles.highlightTitle}>Most Helpful Review</Text>
+              </View>
+              <View style={styles.highlightContent}>
+                <View style={styles.highlightAuthor}>
+                  {topReview.userId?.avatar ? (
+                    <Image
+                      source={{ uri: topReview.userId.avatar }}
+                      style={styles.highlightAvatar}
+                    />
+                  ) : (
+                    <View style={styles.highlightAvatarPlaceholder}>
+                      <Ionicons name="person" size={16} color="#666" />
+                    </View>
+                  )}
+                  <View>
+                    <Text style={styles.highlightAuthorName}>
+                      {topReview.userId?.username || 'Anonymous'}
+                    </Text>
+                    <View
+                      style={[
+                        styles.highlightRating,
+                        { backgroundColor: `${getRatingColor(topReview.rating)}20` },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.highlightRatingText,
+                          { color: getRatingColor(topReview.rating) },
+                        ]}
+                      >
+                        {topReview.rating}/10
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {topReview.review && (
+                  <Text style={styles.highlightText} numberOfLines={3}>
+                    "{topReview.review}"
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Overview - Key Information */}
+          {(movie.description || movie.synopsis) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Overview</Text>
+              <Text style={styles.sectionText}>
+                {movie.description || movie.synopsis || ''}
               </Text>
             </View>
           )}
-        </View>
 
-        {movie.director && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Director</Text>
-            <Text style={styles.sectionText}>{String(movie.director || '')}</Text>
-          </View>
-        )}
-
-        {movie.cast && movie.cast.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cast</Text>
-            <Text style={styles.sectionText}>{movie.cast.join(', ') || ''}</Text>
-          </View>
-        )}
-
-        {movie.genre && movie.genre.length > 0 && (
-          <View style={styles.genreContainer}>
-            {movie.genre.map((g: string, index: number) => (
-              <View key={index} style={styles.genreTag}>
-                <Text style={styles.genreText}>{g}</Text>
+          {/* Director - Quick Info */}
+          {movie.director && (
+            <View style={styles.infoRow}>
+              <Ionicons name="film-outline" size={18} color="#007AFF" />
+              <View style={styles.infoRowContent}>
+                <Text style={styles.infoRowLabel}>Director</Text>
+                <Text style={styles.infoRowValue}>{String(movie.director || '')}</Text>
               </View>
-            ))}
-          </View>
-        )}
-
-        {movie.description && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.sectionText}>{String(movie.description || '')}</Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.reviewButton} onPress={handleWriteReview}>
-          <Text style={styles.reviewButtonText}>Write a Review</Text>
-        </TouchableOpacity>
-
-        <View style={styles.reviewsSection}>
-          <Text style={styles.reviewsTitle}>Reviews</Text>
-          {loadingReviews ? (
-            <ActivityIndicator size="small" color="#007AFF" />
-          ) : reviews.length === 0 ? (
-            <Text style={styles.noReviews}>No reviews yet. Be the first!</Text>
-          ) : (
-            reviews.map((review) => (
-              <View key={review._id} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewAuthor}>{review.userId?.username || 'Anonymous'}</Text>
-                  <Text style={styles.reviewRating}>⭐ {review.rating || 0}/10</Text>
-                </View>
-                {review.title && (
-                  <Text style={styles.reviewTitle}>{String(review.title || '')}</Text>
-                )}
-                <Text style={styles.reviewText}>{review.review || ''}</Text>
-              </View>
-            ))
+            </View>
           )}
-        </View>
-      </View>
-    </ScrollView>
+
+          {/* Cast - Horizontal Scroll */}
+          {movie.cast && movie.cast.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Cast</Text>
+                {movie.cast.length > 10 && (
+                  <TouchableOpacity>
+                    <Text style={styles.seeAllText}>See All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.castContainer}
+              >
+                {movie.cast.slice(0, 10).map((actor: any, index: number) => {
+                  // Handle both string (old format) and object (new format with photos)
+                  const actorName = typeof actor === 'string' ? actor : actor.name;
+                  const actorId = typeof actor === 'object' ? actor.id || actor.tmdbId : null;
+                  const profilePath = typeof actor === 'object' ? actor.profilePath : null;
+                  const character = typeof actor === 'object' ? actor.character : '';
+
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.castCard}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (actorId) {
+                          navigation.navigate('CastDetails', {
+                            personId: actorId,
+                            personName: actorName,
+                          });
+                        }
+                      }}
+                    >
+                      {profilePath ? (
+                        <Image
+                          source={{ uri: profilePath }}
+                          style={styles.castAvatar}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.castAvatarPlaceholder}>
+                          <Ionicons name="person" size={24} color="#666" />
+                        </View>
+                      )}
+                      <Text style={styles.castName} numberOfLines={2}>
+                        {actorName}
+                      </Text>
+                      {character && (
+                        <Text style={styles.castCharacter} numberOfLines={1}>
+                          {character}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Genres - Quick Tags */}
+          {movie.genre && movie.genre.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Genres</Text>
+              <View style={styles.genreContainer}>
+                {movie.genre.map((g: string, index: number) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.genreTag}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.genreText}>{g}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Reviews Section - Main Engagement */}
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.reviewsTitle}>
+                Reviews {reviews.length > 0 && `(${reviews.length})`}
+              </Text>
+              {reviews.length > 1 && (
+                <View style={styles.sortButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      reviewSort === 'recent' && styles.sortButtonActive,
+                    ]}
+                    onPress={() => setReviewSort('recent')}
+                  >
+                    <Text
+                      style={[
+                        styles.sortButtonText,
+                        reviewSort === 'recent' && styles.sortButtonTextActive,
+                      ]}
+                    >
+                      Recent
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      reviewSort === 'highest' && styles.sortButtonActive,
+                    ]}
+                    onPress={() => setReviewSort('highest')}
+                  >
+                    <Text
+                      style={[
+                        styles.sortButtonText,
+                        reviewSort === 'highest' && styles.sortButtonTextActive,
+                      ]}
+                    >
+                      Highest
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      reviewSort === 'lowest' && styles.sortButtonActive,
+                    ]}
+                    onPress={() => setReviewSort('lowest')}
+                  >
+                    <Text
+                      style={[
+                        styles.sortButtonText,
+                        reviewSort === 'lowest' && styles.sortButtonTextActive,
+                      ]}
+                    >
+                      Lowest
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {loadingReviews ? (
+              <ActivityIndicator size="small" color="#007AFF" style={styles.loadingIndicator} />
+            ) : reviews.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="chatbubbles-outline" size={64} color="#333" />
+                <Text style={styles.emptyStateTitle}>No Reviews Yet</Text>
+                <Text style={styles.emptyStateText}>
+                  Be the first to share your thoughts and help others discover this movie!
+                </Text>
+                {isAuthenticated && (
+                  <TouchableOpacity
+                    style={styles.emptyStateButton}
+                    onPress={handleWriteReview}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+                    <Text style={styles.emptyStateButtonText}>
+                      Write the First Review
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              sortedReviews.map((review) => {
+                const reviewUserId = review.userId?._id || review.userId?.id;
+                const currentUserId = user?._id || user?.id;
+                const isUserReview = reviewUserId === currentUserId;
+                return (
+                  <View
+                    key={review._id}
+                    style={[
+                      styles.reviewCard,
+                      isUserReview && styles.userReviewCard,
+                    ]}
+                  >
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewAuthorContainer}>
+                        {review.userId?.avatar ? (
+                          <Image
+                            source={{ uri: review.userId.avatar }}
+                            style={styles.reviewAvatar}
+                          />
+                        ) : (
+                          <View style={styles.reviewAvatarPlaceholder}>
+                            <Ionicons name="person" size={16} color="#666" />
+                          </View>
+                        )}
+                        <View>
+                          <Text style={styles.reviewAuthor}>
+                            {review.userId?.username || 'Anonymous'}
+                            {isUserReview && (
+                              <Text style={styles.yourReviewBadge}> • You</Text>
+                            )}
+                          </Text>
+                          {review.createdAt && (
+                            <Text style={styles.reviewDate}>
+                              {new Date(review.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View
+                        style={[
+                          styles.reviewRatingBadge,
+                          { backgroundColor: `${getRatingColor(review.rating)}20` },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.reviewRatingText,
+                            { color: getRatingColor(review.rating) },
+                          ]}
+                        >
+                          {review.rating}/10
+                        </Text>
+                      </View>
+                    </View>
+                    {review.title && (
+                      <Text style={styles.reviewTitle}>{String(review.title || '')}</Text>
+                    )}
+                    <Text style={styles.reviewText}>{review.review || ''}</Text>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          {/* Bottom Spacing for Floating Button */}
+          <View style={{ height: 100 }} />
+        </Animated.View>
+      </ScrollView>
+
+      {/* Floating Rate It Button - Always Accessible */}
+      {isAuthenticated && !userReview && (
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={handleRateIt}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="star" size={22} color="#fff" />
+          <Text style={styles.floatingButtonText}>Rate It</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 };
 
@@ -188,130 +781,674 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_HEIGHT,
+    backgroundColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stickyHeaderTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroContainer: {
+    height: HERO_HEIGHT,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  backdropContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: HERO_HEIGHT + 100,
+  },
+  backdrop: {
+    width: '100%',
+    height: '100%',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 30,
+  },
+  heroBackButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  heroShareButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  heroMainContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 'auto',
   },
   poster: {
-    width: '100%',
-    height: 400,
-    resizeMode: 'cover',
+    width: 120,
+    height: 180,
+    borderRadius: 12,
+    marginRight: 16,
+    backgroundColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  content: {
-    padding: 16,
+  heroInfo: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  heroTitleContainer: {
+    flex: 1,
   },
   title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  heroRatingBadge: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    backgroundColor: 'rgba(26, 26, 26, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  heroRatingNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
     color: '#fff',
+  },
+  heroRatingLabel: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: -4,
   },
   titleTelugu: {
     fontSize: 18,
+    color: '#ccc',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroMetaText: {
+    fontSize: 15,
+    color: '#ccc',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  ratingBadgeContainer: {
+    alignItems: 'center',
+    marginTop: -40,
+    marginBottom: 24,
+    zIndex: 10,
+  },
+  ratingBadge: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  ratingNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  ratingLabel: {
+    fontSize: 11,
     color: '#999',
+    marginTop: -4,
+  },
+  ratingTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  content: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  primaryCTA: {
+    backgroundColor: '#007AFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  primaryCTAContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 16,
+  },
+  primaryCTAText: {
+    flex: 1,
+  },
+  primaryCTATitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  primaryCTASubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  ratingCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  ratingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  metaContainer: {
+  ratingCardTitleRow: {
     flexDirection: 'row',
-    marginBottom: 16,
-    gap: 24,
-  },
-  metaItem: {
-    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  metaLabel: {
-    fontSize: 14,
-    color: '#999',
-  },
-  metaValue: {
-    fontSize: 14,
-    fontWeight: '600',
+  ratingCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
   },
-  section: {
-    marginBottom: 16,
+  editButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
-  sectionTitle: {
+  ratingCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  yourRatingBadge: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  yourRatingNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  communityRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  communityRatingNumber: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  communityRatingLabel: {
+    fontSize: 20,
+    color: '#999',
+    marginLeft: 4,
+  },
+  ratingCardInfo: {
+    flex: 1,
+  },
+  ratingCardMessage: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
     color: '#fff',
+    marginBottom: 6,
   },
-  sectionText: {
+  ratingCardSnippet: {
+    fontSize: 14,
+    color: '#ccc',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  ratingCardSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  viewFullReviewButton: {
+    marginTop: 8,
+  },
+  viewFullReviewText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  highlightCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FFD70040',
+  },
+  highlightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  highlightTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFD700',
+  },
+  highlightContent: {
+    gap: 12,
+  },
+  highlightAuthor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  highlightAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+  },
+  highlightAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  highlightAuthorName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  highlightRating: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  highlightRatingText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  highlightText: {
     fontSize: 14,
     color: '#ccc',
     lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  sectionText: {
+    fontSize: 15,
+    color: '#ccc',
+    lineHeight: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  infoRowContent: {
+    flex: 1,
+  },
+  infoRowLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoRowValue: {
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  castContainer: {
+    paddingRight: 20,
+  },
+  castCard: {
+    width: 90,
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  castAvatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#2a2a2a',
+    marginBottom: 8,
+  },
+  castAvatarPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  castName: {
+    fontSize: 12,
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  castCharacter: {
+    fontSize: 10,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   genreContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
     gap: 8,
   },
   genreTag: {
     backgroundColor: '#2a2a2a',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   genreText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#ccc',
-  },
-  reviewButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  reviewButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   reviewsSection: {
     marginTop: 8,
   },
+  reviewsHeader: {
+    marginBottom: 20,
+  },
   reviewsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  sortButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  sortButtonText: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
+  },
+  sortButtonTextActive: {
     color: '#fff',
   },
-  noReviews: {
+  loadingIndicator: {
+    marginVertical: 40,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
     color: '#999',
-    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  emptyStateButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyStateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   reviewCard: {
     backgroundColor: '#2a2a2a',
+    borderRadius: 12,
     padding: 16,
-    borderRadius: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  userReviewCard: {
+    borderColor: '#007AFF',
+    borderWidth: 1.5,
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewAuthorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  reviewAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1a1a1a',
+  },
+  reviewAvatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   reviewAuthor: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
   },
-  reviewRating: {
-    fontSize: 14,
+  yourReviewBadge: {
+    fontSize: 13,
     color: '#007AFF',
+    fontWeight: '500',
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  reviewRatingBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  reviewRatingText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   reviewTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
     color: '#fff',
+    marginBottom: 8,
   },
   reviewText: {
     fontSize: 14,
     color: '#ccc',
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 28,
+    gap: 8,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
 
