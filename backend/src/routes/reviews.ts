@@ -20,6 +20,38 @@ interface CreateReviewBody {
   review: string;
 }
 
+// Get all reviews (for Activity feed)
+router.get('/', async (req: Request<{}, {}, {}, ReviewQuery>, res: Response) => {
+  try {
+    const { page = '1', limit = '50' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const reviews = await Review.find({})
+      .populate('userId', 'username name avatar')
+      .populate('movieId', 'title posterUrl tmdbId releaseDate')
+      .sort({ createdAt: -1 }) // Most recent first
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('-__v')
+      .lean();
+
+    const total: number = await Review.countDocuments({});
+
+    res.json({
+      reviews,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error in GET /api/reviews:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all reviews for a movie (by MongoDB ID or TMDB ID)
 router.get('/movie/:movieId', async (req: Request<{ movieId: string }, {}, {}, ReviewQuery>, res: Response) => {
   try {
