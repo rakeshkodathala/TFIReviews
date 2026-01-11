@@ -122,7 +122,7 @@ const ActivityScreen: React.FC = () => {
         activeOpacity={0.7}
       >
         <View style={styles.reviewContent}>
-          {/* Row 1: Poster and Movie Info */}
+          {/* Horizontal Layout: Poster and All Info */}
           <View style={styles.movieRow}>
             {/* Movie Poster */}
             {movie.posterUrl ? (
@@ -137,11 +137,14 @@ const ActivityScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Movie Info: Name, Year, Rating */}
-            <View style={styles.movieInfoSection}>
+            {/* All Content Beside Poster */}
+            <View style={styles.contentSection}>
+              {/* Movie Name */}
               <Text style={styles.movieTitle} numberOfLines={2}>
                 {movie.title || "Unknown Movie"}
               </Text>
+
+              {/* Year and Rating */}
               <View style={styles.movieMeta}>
                 {movie.releaseDate && (
                   <>
@@ -155,33 +158,33 @@ const ActivityScreen: React.FC = () => {
                   ⭐ {item.rating || 0}/10
                 </Text>
               </View>
-            </View>
-          </View>
 
-          {/* Row 2: User Name and Time */}
-          <View style={styles.userRow}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(reviewer.username || "A").charAt(0).toUpperCase()}
-                </Text>
+              {/* User Name and Time */}
+              <View style={styles.userRow}>
+                <View style={styles.userInfo}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {(reviewer.username || "A").charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.reviewerName} numberOfLines={1}>
+                    {reviewer.username || "Anonymous"}
+                  </Text>
+                </View>
+                {timeAgo && <Text style={styles.reviewTime}>{timeAgo}</Text>}
               </View>
-              <Text style={styles.reviewerName} numberOfLines={1}>
-                {reviewer.username || "Anonymous"}
+
+              {/* Review Text */}
+              <Text style={styles.reviewText} numberOfLines={3}>
+                {item.review || "No review text"}
               </Text>
+
+              {/* Read More Indicator */}
+              {item.review && item.review.length > 150 && (
+                <Text style={styles.readMore}>Tap to read full review →</Text>
+              )}
             </View>
-            {timeAgo && <Text style={styles.reviewTime}>{timeAgo}</Text>}
           </View>
-
-          {/* Review Text */}
-          <Text style={styles.reviewText} numberOfLines={4}>
-            {item.review || "No review text"}
-          </Text>
-
-          {/* Read More Indicator */}
-          {item.review && item.review.length > 150 && (
-            <Text style={styles.readMore}>Tap to read full review →</Text>
-          )}
         </View>
       </TouchableOpacity>
     );
@@ -249,7 +252,6 @@ const styles = StyleSheet.create({
     color: "#999",
   },
   list: {
-    padding: 16,
     paddingBottom: 24,
   },
   listEmpty: {
@@ -257,29 +259,23 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   reviewCard: {
-    backgroundColor: "#2a2a2a",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    backgroundColor: "#1a1a1a",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
   },
   reviewContent: {
-    padding: 12,
+    padding: 16,
   },
   movieRow: {
     flexDirection: "row",
-    marginBottom: 8,
+    alignItems: "flex-start",
   },
   moviePoster: {
     width: 60,
     height: 90,
     borderRadius: 8,
     backgroundColor: "#333",
-    marginRight: 10,
+    marginRight: 12,
   },
   posterPlaceholder: {
     justifyContent: "center",
@@ -289,9 +285,9 @@ const styles = StyleSheet.create({
   posterPlaceholderText: {
     fontSize: 24,
   },
-  movieInfoSection: {
+  contentSection: {
     flex: 1,
-    justifyContent: "center",
+    paddingRight: 4,
   },
   movieTitle: {
     fontSize: 16,
@@ -303,6 +299,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginBottom: 6,
   },
   movieYear: {
     fontSize: 12,
@@ -322,10 +319,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    marginBottom: 6,
   },
   userInfo: {
     flexDirection: "row",
