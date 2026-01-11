@@ -1,16 +1,13 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
-import SplashScreen from "./src/SplashScreen";
+import React from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from './src/context/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
-  return SplashScreen;
+  return (
+    <AuthProvider>
+      <StatusBar />
+      <AppNavigator />
+    </AuthProvider>
+  );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});

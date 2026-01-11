@@ -1,0 +1,29 @@
+// API Configuration
+export const API_BASE_URL = 'http://localhost:3000/api';
+
+export const API_ENDPOINTS = {
+  // Auth
+  REGISTER: '/auth/register',
+  LOGIN: '/auth/login',
+  VERIFY_TOKEN: '/auth/verify',
+  
+  // Movies
+  MOVIES: '/movies',
+  MOVIE_BY_ID: (id: string) => `/movies/${id}`,
+  
+  // Reviews
+  REVIEWS: '/reviews',
+  REVIEW_BY_ID: (id: string) => `/reviews/${id}`,
+  REVIEWS_BY_MOVIE: (movieId: string) => `/reviews/movie/${movieId}`,
+  REVIEWS_BY_TMDB: (tmdbId: number) => `/reviews/tmdb/${tmdbId}`,
+  
+  // Movie Search (TMDB)
+  SEARCH_MOVIES: '/movie-search/search',
+  MOVIE_DETAILS: (tmdbId: number) => `/movie-search/movie/${tmdbId}`,
+  POPULAR_MOVIES: '/movie-search/popular',
+  TOLLYWOOD_MOVIES: '/movie-search/tollywood',
+  IMPORT_MOVIE: (tmdbId: number) => `/movie-search/import/${tmdbId}`,
+  
+  // Health
+  HEALTH: '/health',
+};

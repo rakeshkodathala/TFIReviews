@@ -101,4 +101,60 @@ router.post('/login', async (req: Request<{}, {}, LoginBody>, res: Response) => 
   }
 });
 
+// Verify token (for debugging)
+router.get('/verify', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ 
+        error: 'Authentication required', 
+        details: 'No Authorization header found' 
+      });
+    }
+
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        error: 'Invalid authorization format', 
+        details: 'Authorization header must start with "Bearer "' 
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ 
+        error: 'Authentication required', 
+        details: 'No token found in Authorization header' 
+      });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    
+    return res.json({
+      valid: true,
+      userId: decoded.userId,
+      message: 'Token is valid'
+    });
+  } catch (error: any) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        error: 'Invalid token', 
+        details: error.message 
+      });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        error: 'Token expired', 
+        details: error.message,
+        expiredAt: error.expiredAt
+      });
+    }
+    return res.status(401).json({ 
+      error: 'Token verification failed', 
+      details: error.message 
+    });
+  }
+});
+
 export default router;

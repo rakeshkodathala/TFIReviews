@@ -2,7 +2,8 @@ import express, { Router, Request, Response } from 'express';
 import Review from '../models/Review';
 import Movie from '../models/Movie';
 import movieApiService from '../services/movieApi';
-import { IReview, IMovie } from '../types';
+import { IReview, IMovie, AuthRequest } from '../types';
+import { authenticate } from '../middleware/auth';
 
 const router: Router = express.Router();
 
@@ -14,7 +15,6 @@ interface ReviewQuery {
 interface CreateReviewBody {
   movieId?: string; // MongoDB movie ID
   tmdbId?: string | number; // TMDB movie ID (alternative)
-  userId: string;
   rating: number;
   title?: string;
   review: string;
@@ -142,9 +142,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create new review (supports both MongoDB ID and TMDB ID)
-router.post('/', async (req: Request<{}, {}, CreateReviewBody>, res: Response) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { movieId, tmdbId, userId, rating, title, review } = req.body;
+    const { movieId, tmdbId, rating, title, review } = req.body;
+    const userId = req.userId; // Get from authenticated token
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
 
     let dbMovieId: string;
 
@@ -206,8 +211,23 @@ router.post('/', async (req: Request<{}, {}, CreateReviewBody>, res: Response) =
 });
 
 // Update review
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Check if review exists and belongs to user
+    const existingReview: IReview | null = await Review.findById(req.params.id).lean();
+    if (!existingReview) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    if (existingReview.userId.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only update your own reviews' });
+    }
+
     const review: IReview | null = await Review.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: new Date() },
@@ -216,10 +236,6 @@ router.put('/:id', async (req: Request, res: Response) => {
       .populate('userId', 'username name avatar')
       .select('-__v')
       .lean();
-
-    if (!review) {
-      return res.status(404).json({ error: 'Review not found' });
-    }
 
     // Update movie rating
     const movie: IMovie | null = await Movie.findById(review.movieId).lean();
@@ -239,12 +255,24 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // Delete review
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const review: IReview | null = await Review.findByIdAndDelete(req.params.id).lean();
-    if (!review) {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Check if review exists and belongs to user
+    const existingReview: IReview | null = await Review.findById(req.params.id).lean();
+    if (!existingReview) {
       return res.status(404).json({ error: 'Review not found' });
     }
+
+    if (existingReview.userId.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own reviews' });
+    }
+
+    const review: IReview | null = await Review.findByIdAndDelete(req.params.id).lean();
 
     // Update movie rating
     const movie: IMovie | null = await Movie.findById(review.movieId).lean();

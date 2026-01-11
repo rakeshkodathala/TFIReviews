@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import Movie from '../models/Movie';
-import { PaginationQuery, PaginationResponse, IMovie } from '../types';
+import { PaginationQuery, PaginationResponse, IMovie, AuthRequest } from '../types';
+import { authenticate } from '../middleware/auth';
 
 const router: Router = express.Router();
 
@@ -58,8 +59,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create new movie (admin only - add auth middleware later)
-router.post('/', async (req: Request, res: Response) => {
+// Create new movie (requires authentication)
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const movie: IMovie = new Movie(req.body);
     await movie.save();
@@ -69,8 +70,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Update movie
-router.put('/:id', async (req: Request, res: Response) => {
+// Update movie (requires authentication)
+router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const movie: IMovie | null = await Movie.findByIdAndUpdate(
       req.params.id,
@@ -90,8 +91,8 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Delete movie
-router.delete('/:id', async (req: Request, res: Response) => {
+// Delete movie (requires authentication)
+router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const movie: IMovie | null = await Movie.findByIdAndDelete(req.params.id).lean();
     if (!movie) {

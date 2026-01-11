@@ -120,6 +120,32 @@
 						"description": "Login with email and password"
 					},
 					"response": []
+				},
+				{
+					"name": "Verify Token",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token to verify"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify"
+							]
+						},
+						"description": "Verify if your token is valid. Use this to debug authentication issues."
+					},
+					"response": []
 				}
 			]
 		},
@@ -259,6 +285,11 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
 							}
 						],
 						"body": {
@@ -275,7 +306,7 @@
 								"movies"
 							]
 						},
-						"description": "Create a new movie"
+						"description": "Create a new movie. Requires authentication."
 					},
 					"response": []
 				},
@@ -287,6 +318,11 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
 							}
 						],
 						"body": {
@@ -310,7 +346,7 @@
 								}
 							]
 						},
-						"description": "Update a movie by ID"
+						"description": "Update a movie by ID. Requires authentication."
 					},
 					"response": []
 				},
@@ -318,7 +354,13 @@
 					"name": "Delete Movie",
 					"request": {
 						"method": "DELETE",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/movies/:id",
 							"host": [
@@ -336,7 +378,7 @@
 								}
 							]
 						},
-						"description": "Delete a movie by ID"
+						"description": "Delete a movie by ID. Requires authentication."
 					},
 					"response": []
 				}
@@ -430,11 +472,16 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"movieId\": \"{{movie_id}}\",\n    \"userId\": \"{{user_id}}\",\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
+							"raw": "{\n    \"movieId\": \"{{movie_id}}\",\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/reviews",
@@ -446,7 +493,7 @@
 								"reviews"
 							]
 						},
-						"description": "Create a new review for a movie. Automatically updates movie rating."
+						"description": "Create a new review for a movie. Requires authentication. User ID is automatically taken from token. Automatically updates movie rating."
 					},
 					"response": []
 				},
@@ -472,11 +519,16 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tmdbId\": 1511417,\n    \"userId\": \"{{user_id}}\",\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
+							"raw": "{\n    \"tmdbId\": 1511417,\n    \"rating\": 9,\n    \"title\": \"Amazing Movie!\",\n    \"review\": \"This is one of the best Tollywood movies I've ever seen. The cinematography, acting, and story are all exceptional.\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/reviews",
@@ -488,7 +540,7 @@
 								"reviews"
 							]
 						},
-						"description": "Create a new review using TMDB movie ID. Movie is auto-imported if not in DB."
+						"description": "Create a new review using TMDB movie ID. Requires authentication. Movie is auto-imported if not in DB. User ID is automatically taken from token."
 					},
 					"response": []
 				},
@@ -538,6 +590,11 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
 							}
 						],
 						"body": {
@@ -561,7 +618,7 @@
 								}
 							]
 						},
-						"description": "Update a review by ID. Automatically recalculates movie rating."
+						"description": "Update a review by ID. Requires authentication. You can only update your own reviews. Automatically recalculates movie rating."
 					},
 					"response": []
 				},
@@ -569,7 +626,13 @@
 					"name": "Delete Review",
 					"request": {
 						"method": "DELETE",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/reviews/:id",
 							"host": [
@@ -587,7 +650,7 @@
 								}
 							]
 						},
-						"description": "Delete a review by ID. Automatically recalculates movie rating."
+						"description": "Delete a review by ID. Requires authentication. You can only delete your own reviews. Automatically recalculates movie rating."
 					},
 					"response": []
 				}
@@ -741,7 +804,13 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register (optional but recommended)"
+							}
+						],
 						"url": {
 							"raw": "{{base_url}}/api/movie-search/import/:tmdbId",
 							"host": [
@@ -761,7 +830,7 @@
 								}
 							]
 						},
-						"description": "Import a movie from TMDB into local MongoDB. Saves movie_id to environment."
+						"description": "Import a movie from TMDB into local MongoDB. Saves movie_id to environment. Note: This endpoint doesn't require auth, but movies are typically auto-imported when creating reviews."
 					},
 					"response": []
 				}
