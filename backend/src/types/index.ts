@@ -25,6 +25,7 @@ export interface IMovie extends Document {
   trailerUrl?: string;
   synopsis?: string;
   rating: number;
+  tmdbRating: number;
   totalReviews: number;
   tmdbId?: number;
   createdAt: Date;

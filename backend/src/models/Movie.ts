@@ -45,6 +45,12 @@ const movieSchema = new Schema<IMovie>(
       min: 0,
       max: 10,
     },
+    tmdbRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 10,
+    },
     totalReviews: {
       type: Number,
       default: 0,

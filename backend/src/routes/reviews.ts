@@ -195,6 +195,30 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         const movieData = movieApiService.convertToDbFormat(externalMovie);
         movie = new Movie(movieData);
         await movie.save();
+      } else if (!movie.tmdbRating || movie.tmdbRating === 0) {
+        // Movie exists but doesn't have TMDB rating, fetch and update it
+        try {
+          const externalMovie = await movieApiService.getMovieById(tmdbId);
+          const tmdbRating = externalMovie.rating 
+            ? Math.max(0, Math.min(10, externalMovie.rating))
+            : 0;
+          
+          // Update TMDB rating and recalculate combined rating
+          const allReviews: IReview[] = await Review.find({ movieId: movie._id.toString() }).lean();
+          let combinedRating = tmdbRating;
+          
+          if (allReviews.length > 0) {
+            const userAvgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+            combinedRating = (tmdbRating + userAvgRating) / 2;
+          }
+          
+          await Movie.findByIdAndUpdate(movie._id, {
+            tmdbRating: tmdbRating,
+            rating: Math.round(combinedRating * 10) / 10,
+          });
+        } catch (error) {
+          console.error('Error fetching TMDB rating for existing movie:', error);
+        }
       }
       
       dbMovieId = movie._id.toString();
@@ -218,14 +242,25 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     const newReview: IReview = new Review({ movieId: dbMovieId, userId, rating, title, review });
     await newReview.save();
 
-    // Update movie rating and review count
+    // Update movie rating and review count (combine TMDB rating with user reviews)
     const movie: IMovie | null = await Movie.findById(dbMovieId).lean();
     if (movie) {
       const allReviews: IReview[] = await Review.find({ movieId: dbMovieId }).lean();
-      const avgRating: number = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      const tmdbRating = movie.tmdbRating || 0;
+      
+      let combinedRating = tmdbRating; // Default to TMDB rating
+      
+      if (allReviews.length > 0) {
+        // Calculate average of user reviews
+        const userAvgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        
+        // Combine TMDB rating and user reviews average
+        // Simple average: (TMDB rating + user reviews average) / 2
+        combinedRating = (tmdbRating + userAvgRating) / 2;
+      }
       
       await Movie.findByIdAndUpdate(dbMovieId, {
-        rating: Math.round(avgRating * 10) / 10,
+        rating: Math.round(combinedRating * 10) / 10,
         totalReviews: allReviews.length,
       });
     }
@@ -269,14 +304,25 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       .select('-__v')
       .lean();
 
-    // Update movie rating
+    // Update movie rating (combine TMDB rating with user reviews)
     const movie: IMovie | null = await Movie.findById(review.movieId).lean();
     if (movie) {
       const allReviews: IReview[] = await Review.find({ movieId: review.movieId }).lean();
-      const avgRating: number = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      const tmdbRating = movie.tmdbRating || 0;
+      
+      let combinedRating = tmdbRating; // Default to TMDB rating
+      
+      if (allReviews.length > 0) {
+        // Calculate average of user reviews
+        const userAvgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        
+        // Combine TMDB rating and user reviews average
+        combinedRating = (tmdbRating + userAvgRating) / 2;
+      }
       
       await Movie.findByIdAndUpdate(review.movieId, {
-        rating: Math.round(avgRating * 10) / 10,
+        rating: Math.round(combinedRating * 10) / 10,
+        totalReviews: allReviews.length,
       });
     }
 
@@ -306,22 +352,24 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     const review: IReview | null = await Review.findByIdAndDelete(req.params.id).lean();
 
-    // Update movie rating
+    // Update movie rating (combine TMDB rating with user reviews)
     const movie: IMovie | null = await Movie.findById(review.movieId).lean();
     if (movie) {
       const allReviews: IReview[] = await Review.find({ movieId: review.movieId }).lean();
+      const tmdbRating = movie.tmdbRating || 0;
+      
+      let combinedRating = tmdbRating; // Default to TMDB rating if no reviews
+      
       if (allReviews.length > 0) {
-        const avgRating: number = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
-        await Movie.findByIdAndUpdate(review.movieId, {
-          rating: Math.round(avgRating * 10) / 10,
-        });
-      } else {
-        await Movie.findByIdAndUpdate(review.movieId, {
-          rating: 0,
-        });
+        // Calculate average of user reviews
+        const userAvgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        
+        // Combine TMDB rating and user reviews average
+        combinedRating = (tmdbRating + userAvgRating) / 2;
       }
       
       await Movie.findByIdAndUpdate(review.movieId, {
+        rating: Math.round(combinedRating * 10) / 10,
         totalReviews: allReviews.length,
       });
     }

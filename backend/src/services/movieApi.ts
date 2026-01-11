@@ -289,6 +289,11 @@ class MovieApiService {
    * Convert external movie to our database format
    */
   convertToDbFormat(externalMovie: ExternalMovie): any {
+    // Convert TMDB rating from 0-10 scale (TMDB returns 0-10, but we need to ensure it's in 0-10 range)
+    const tmdbRating = externalMovie.rating 
+      ? Math.max(0, Math.min(10, externalMovie.rating)) // Ensure it's between 0-10
+      : 0;
+    
     return {
       title: externalMovie.title,
       titleTelugu: externalMovie.titleTelugu,
@@ -301,7 +306,8 @@ class MovieApiService {
       posterUrl: externalMovie.posterUrl,
       trailerUrl: externalMovie.trailerUrl,
       synopsis: externalMovie.synopsis || '',
-      rating: 0, // Will be calculated from reviews
+      rating: tmdbRating, // Start with TMDB rating, will be combined with user reviews
+      tmdbRating: tmdbRating, // Store TMDB rating separately
       totalReviews: 0,
       tmdbId: externalMovie.tmdbId || externalMovie.id, // Store TMDB ID for reference
     };
