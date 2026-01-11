@@ -144,8 +144,13 @@ export const movieSearchService = {
     return response.data;
   },
 
-  async getTollywood(params?: { page?: number }) {
+  async getTollywood(params?: { page?: number; language?: string }) {
     const response = await apiClient.get('/movie-search/tollywood', { params });
+    return response.data;
+  },
+
+  async getByGenre(genreId: number, params?: { page?: number; language?: string }) {
+    const response = await apiClient.get(`/movie-search/genre/${genreId}`, { params });
     return response.data;
   },
 

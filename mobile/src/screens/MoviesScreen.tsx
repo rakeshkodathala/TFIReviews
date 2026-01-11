@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,19 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  TextInput,
   RefreshControl,
+  Dimensions,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { moviesService, movieSearchService } from "../services/api";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const NUM_COLUMNS = 3;
+const CARD_MARGIN = 4;
+const LIST_PADDING = 4;
+const CARD_WIDTH =
+  (SCREEN_WIDTH - LIST_PADDING * 2 - CARD_MARGIN * (NUM_COLUMNS * 2)) /
+  NUM_COLUMNS;
 
 interface Movie {
   _id?: string;
@@ -30,16 +39,15 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    loadMovies();
-  }, []);
-
-  const loadMovies = async () => {
+  const loadMovies = useCallback(async () => {
     try {
       setLoading(true);
-      const dbMovies = await moviesService.getAll({ limit: 20 });
+      // Sort by updatedAt descending to show latest reviewed/added movies first
+      const dbMovies = await moviesService.getAll({
+        limit: 20,
+        sortBy: "updatedAt",
+      });
       if (dbMovies.movies && dbMovies.movies.length > 0) {
         setMovies(dbMovies.movies);
       } else {
@@ -57,27 +65,19 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+  useEffect(() => {
+    loadMovies();
+  }, [loadMovies]);
+
+  // Automatically reload movies when screen comes into focus
+  // This happens when returning from CreateReview screen
+  useFocusEffect(
+    useCallback(() => {
       loadMovies();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const results = await movieSearchService.search({
-        query: searchQuery,
-        language: "te",
-      });
-      setMovies(results.movies || []);
-    } catch (error) {
-      console.error("Error searching movies:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, [loadMovies])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -87,8 +87,10 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
 
   const renderMovie = ({ item }: { item: Movie }) => (
     <TouchableOpacity
-      style={styles.movieCard}
-      onPress={() => navigation.navigate("MovieDetails", { movie: item })}
+      style={[styles.movieCard, { width: CARD_WIDTH }]}
+      onPress={() => {
+        navigation.navigate("MovieDetails", { movie: item });
+      }}
     >
       {item.posterUrl ? (
         <Image source={{ uri: item.posterUrl }} style={styles.poster} />
@@ -128,21 +130,6 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search movies..."
-          placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </TouchableOpacity>
-      </View>
-
       <FlatList
         data={movies}
         renderItem={renderMovie}
@@ -151,7 +138,7 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
             item.tmdbId?.toString() || item._id || item.id?.toString();
           return key ? String(key) : Math.random().toString();
         }}
-        numColumns={2}
+        numColumns={3}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -169,7 +156,7 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a1a",
   },
   centerContainer: {
     flex: 1,
@@ -178,47 +165,21 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: "#666",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    padding: 16,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-  searchButton: {
-    height: 44,
-    paddingHorizontal: 20,
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-    justifyContent: "center",
-  },
-  searchButtonText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: "#999",
   },
   list: {
-    padding: 8,
+    padding: 4,
   },
   movieCard: {
-    flex: 1,
-    margin: 8,
+    margin: CARD_MARGIN,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#2a2a2a",
   },
   poster: {
     width: "100%",
     aspectRatio: 2 / 3,
-    backgroundColor: "#ddd",
+    backgroundColor: "#333",
   },
   posterPlaceholder: {
     justifyContent: "center",
@@ -229,21 +190,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   movieInfo: {
-    padding: 8,
+    padding: 6,
   },
   movieTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     marginBottom: 4,
+    color: "#fff",
   },
   movieRating: {
-    fontSize: 12,
-    color: "#666",
+    fontSize: 10,
+    color: "#999",
   },
   movieDate: {
-    fontSize: 12,
+    fontSize: 10,
     color: "#999",
-    marginTop: 4,
+    marginTop: 2,
   },
   emptyContainer: {
     flex: 1,

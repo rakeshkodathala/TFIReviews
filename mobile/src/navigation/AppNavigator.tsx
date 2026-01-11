@@ -1,22 +1,24 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useAuth } from '../context/AuthContext';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useAuth } from "../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 
 // Screens
-import SplashScreen from '../SplashScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import MoviesScreen from '../screens/MoviesScreen';
-import MovieDetailsScreen from '../screens/MovieDetailsScreen';
-import CreateReviewScreen from '../screens/CreateReviewScreen';
+import SplashScreen from "../SplashScreen";
+import LoginScreen from "../screens/LoginScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+import MoviesScreen from "../screens/MoviesScreen";
+import SearchScreen from "../screens/SearchScreen";
+import ActivityScreen from "../screens/ActivityScreen";
+import AccountScreen from "../screens/AccountScreen";
+import MovieDetailsScreen from "../screens/MovieDetailsScreen";
+import CreateReviewScreen from "../screens/CreateReviewScreen";
 
 // Navigation types
 export type RootStackParamList = {
-  MoviesTab: undefined;
-  MovieDetails: { movie: any };
-  CreateReview: { movie: any };
+  MainTabs: undefined;
 };
 
 export type AuthStackParamList = {
@@ -24,19 +26,53 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
-const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
+export type MainTabParamList = {
+  HomeStack: undefined;
+  SearchStack: undefined;
+  ActivityStack: undefined;
+  AccountStack: undefined;
+};
 
-// Constants for boolean values - ensure they're primitives
-const HEADER_HIDDEN = false;
-const HEADER_SHOWN = true;
+export type HomeStackParamList = {
+  Home: undefined;
+  MovieDetails: { movie: any };
+  CreateReview: { movie: any };
+};
+
+export type SearchStackParamList = {
+  Search: undefined;
+  MovieDetails: { movie: any };
+  CreateReview: { movie: any };
+};
+
+export type ActivityStackParamList = {
+  Activity: undefined;
+  MovieDetails: { movie: any };
+  CreateReview: { movie: any };
+};
+
+export type AccountStackParamList = {
+  Account: undefined;
+  MovieDetails: { movie: any };
+  CreateReview: { movie: any };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
+const HomeStackNav = createNativeStackNavigator<HomeStackParamList>();
+const SearchStackNav = createNativeStackNavigator<SearchStackParamList>();
+const ActivityStackNav = createNativeStackNavigator<ActivityStackParamList>();
+const AccountStackNav = createNativeStackNavigator<AccountStackParamList>();
 
 // Auth Stack
 const AuthStack = () => {
   return (
-    <AuthStackNav.Navigator 
-      screenOptions={() => ({ headerShown: false })}
+    <AuthStackNav.Navigator
+      screenOptions={() => ({
+        headerShown: false,
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      })}
     >
       <AuthStackNav.Screen name="Login" component={LoginScreen} />
       <AuthStackNav.Screen name="Register" component={RegisterScreen} />
@@ -44,47 +80,248 @@ const AuthStack = () => {
   );
 };
 
+// Home Stack Navigator
+const HomeStack = () => {
+  return (
+    <HomeStackNav.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { color: "#fff" },
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      }}
+    >
+      <HomeStackNav.Screen
+        name="Home"
+        component={MoviesScreen}
+        options={{
+          title: "TFI Reviews",
+          headerTitleStyle: {
+            fontWeight: "bold",
+            color: "#007AFF",
+            fontSize: 24,
+          },
+        }}
+      />
+      <HomeStackNav.Screen
+        name="MovieDetails"
+        component={MovieDetailsScreen}
+        options={{
+          title: "Movie Details",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+      <HomeStackNav.Screen
+        name="CreateReview"
+        component={CreateReviewScreen}
+        options={{
+          title: "Write a Review",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+    </HomeStackNav.Navigator>
+  );
+};
+
+// Search Stack Navigator
+const SearchStack = () => {
+  return (
+    <SearchStackNav.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { color: "#fff" },
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      }}
+    >
+      <SearchStackNav.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          title: "Search",
+        }}
+      />
+      <SearchStackNav.Screen
+        name="MovieDetails"
+        component={MovieDetailsScreen}
+        options={{
+          title: "Movie Details",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+      <SearchStackNav.Screen
+        name="CreateReview"
+        component={CreateReviewScreen}
+        options={{
+          title: "Write a Review",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+    </SearchStackNav.Navigator>
+  );
+};
+
+// Activity Stack Navigator
+const ActivityStack = () => {
+  return (
+    <ActivityStackNav.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { color: "#fff" },
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      }}
+    >
+      <ActivityStackNav.Screen
+        name="Activity"
+        component={ActivityScreen}
+        options={{
+          title: "Activity",
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="MovieDetails"
+        component={MovieDetailsScreen}
+        options={{
+          title: "Movie Details",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="CreateReview"
+        component={CreateReviewScreen}
+        options={{
+          title: "Write a Review",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+    </ActivityStackNav.Navigator>
+  );
+};
+
+// Account Stack Navigator
+const AccountStack = () => {
+  return (
+    <AccountStackNav.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { color: "#fff" },
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      }}
+    >
+      <AccountStackNav.Screen
+        name="Account"
+        component={AccountScreen}
+        options={{
+          title: "Account",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="MovieDetails"
+        component={MovieDetailsScreen}
+        options={{
+          title: "Movie Details",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="CreateReview"
+        component={CreateReviewScreen}
+        options={{
+          title: "Write a Review",
+          headerStyle: { backgroundColor: "#1a1a1a" },
+          headerTintColor: "#fff",
+        }}
+      />
+    </AccountStackNav.Navigator>
+  );
+};
+
 // Main Stack
 const MainStack = () => {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { color: "#fff" },
+        contentStyle: { backgroundColor: "#1a1a1a" },
+      }}
+    >
       <Stack.Screen
-        name="MoviesTab"
-        component={MoviesTab}
+        name="MainTabs"
+        component={MainTabs}
         options={() => ({ headerShown: false })}
-      />
-      <Stack.Screen
-        name="MovieDetails"
-        component={MovieDetailsScreen}
-        options={{ title: 'Movie Details' }}
-      />
-      <Stack.Screen
-        name="CreateReview"
-        component={CreateReviewScreen}
-        options={{ title: 'Write a Review' }}
       />
     </Stack.Navigator>
   );
 };
 
-// Movies Tab
-const MoviesTab = () => {
+// Main Tabs (Bottom Navigation)
+const MainTabs = () => {
   return (
     <Tab.Navigator
-      screenOptions={() => ({
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#999',
-        headerShown: true,
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+
+          if (route.name === "HomeStack") {
+            iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "SearchStack") {
+            iconName = focused ? "search" : "search-outline";
+          } else if (route.name === "ActivityStack") {
+            iconName = focused ? "heart" : "heart-outline";
+          } else if (route.name === "AccountStack") {
+            iconName = focused ? "person" : "person-outline";
+          } else {
+            iconName = "ellipse-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: "#007AFF",
+        tabBarInactiveTintColor: "#999",
+        headerShown: false, // Headers are handled by individual stacks
+        tabBarStyle: {
+          backgroundColor: "#1a1a1a",
+          borderTopColor: "#333",
+        },
       })}
     >
       <Tab.Screen
-        name="Movies"
-        component={MoviesScreen}
+        name="HomeStack"
+        component={HomeStack}
         options={{
-          title: 'TFI Reviews',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
+          title: "Home",
+        }}
+      />
+      <Tab.Screen
+        name="SearchStack"
+        component={SearchStack}
+        options={{
+          title: "Search",
+        }}
+      />
+      <Tab.Screen
+        name="ActivityStack"
+        component={ActivityStack}
+        options={{
+          title: "Activity",
+        }}
+      />
+      <Tab.Screen
+        name="AccountStack"
+        component={AccountStack}
+        options={{
+          title: "Account",
         }}
       />
     </Tab.Navigator>
@@ -94,7 +331,7 @@ const MoviesTab = () => {
 // Main Navigator
 const AppNavigator: React.FC = () => {
   const auth = useAuth();
-  
+
   // Ensure primitive booleans
   const isLoading: boolean = !!auth.isLoading;
   const isAuthenticated: boolean = !!auth.isAuthenticated;

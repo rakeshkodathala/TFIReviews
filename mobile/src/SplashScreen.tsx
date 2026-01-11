@@ -14,7 +14,7 @@ const SplashScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     marginBottom: 32,
   },
   loader: {

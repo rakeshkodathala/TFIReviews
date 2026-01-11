@@ -75,8 +75,31 @@ router.get('/popular', async (req: Request, res: Response) => {
 router.get('/tollywood', async (req: Request, res: Response) => {
   try {
     const movies = await movieApiService.getMoviesByRegion('IN', {
-      language: 'te',
+      language: 'en', // Use English to get English titles
       ...req.query,
+    });
+    
+    res.json({
+      movies,
+      count: movies.length,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get movies by genre using TMDB discover API
+ * GET /api/movie-search/genre/:genreId?page=1
+ */
+router.get('/genre/:genreId', async (req: Request, res: Response) => {
+  try {
+    const { genreId } = req.params;
+    const { page = '1', language = 'te' } = req.query;
+    
+    const movies = await movieApiService.getMoviesByGenre(parseInt(genreId), {
+      page: parseInt(page as string),
+      language: language as string,
     });
     
     res.json({

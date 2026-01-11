@@ -139,12 +139,13 @@ class MovieApiService {
    */
   async getMoviesByRegion(region: string = 'IN', params?: MovieSearchParams): Promise<ExternalMovie[]> {
     try {
-      const { page = 1, language = 'te', ...otherParams } = params || {};
+      // Default to English for titles, but allow override
+      const { page = 1, language = 'en', ...otherParams } = params || {};
       
       const response = await this.apiClient.get('/discover/movie', {
         params: {
           region,
-          language,
+          language, // Use English to get English titles
           page,
           sort_by: 'popularity.desc',
           with_origin_country: 'IN', // India
@@ -156,6 +157,42 @@ class MovieApiService {
     } catch (error: any) {
       console.error('Error fetching regional movies:', error.message);
       throw new Error(`Failed to fetch regional movies: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get movies by genre using TMDB discover API
+   */
+  async getMoviesByGenre(genreId: number, params?: MovieSearchParams): Promise<ExternalMovie[]> {
+    try {
+      // Default to English for titles, but allow override
+      const { page = 1, language = 'en', ...otherParams } = params || {};
+      
+      // Build params - try with origin country first, but don't make it too restrictive
+      const requestParams: any = {
+        with_genres: genreId,
+        language, // Use English to get English titles
+        page,
+        sort_by: 'popularity.desc',
+        include_adult: false,
+        ...otherParams,
+      };
+      
+      // Add origin country filter for Indian movies when searching for regional content
+      // But still request English titles
+      if (params?.with_origin_country || params?.region === 'IN') {
+        requestParams.with_origin_country = 'IN';
+      }
+      
+      const response = await this.apiClient.get('/discover/movie', {
+        params: requestParams,
+      });
+      
+      return this.transformMovies(response.data);
+    } catch (error: any) {
+      console.error('Error fetching movies by genre:', error.message);
+      console.error('Error details:', error.response?.data || error);
+      throw new Error(`Failed to fetch movies by genre: ${error.message}`);
     }
   }
 
@@ -224,9 +261,14 @@ class MovieApiService {
       ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
       : movie.posterUrl || undefined;
 
+    // Since we're requesting language='en', TMDB should return English titles
+    // Use title if available (will be in English), fallback to original_title
+    // For non-English movies, original_title might be in native language, so prefer title
+    const englishTitle = movie.title || movie.original_title;
+
     return {
       id: movie.id,
-      title: movie.title || movie.original_title,
+      title: englishTitle,
       titleTelugu: movie.titleTelugu || movie.title_telugu, // May need to fetch from alternative titles
       director,
       cast,

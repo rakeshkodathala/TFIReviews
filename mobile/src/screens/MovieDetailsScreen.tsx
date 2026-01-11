@@ -12,9 +12,9 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { movieSearchService, reviewsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { HomeStackParamList } from '../navigation/AppNavigator';
 
-type MovieDetailsScreenProps = NativeStackScreenProps<RootStackParamList, 'MovieDetails'>;
+type MovieDetailsScreenProps = NativeStackScreenProps<HomeStackParamList, 'MovieDetails'>;
 
 const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, route }) => {
   const { movie: initialMovie } = route.params;
@@ -182,7 +182,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a1a',
   },
   centerContainer: {
     flex: 1,
@@ -201,10 +201,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: '#fff',
   },
   titleTelugu: {
     fontSize: 18,
-    color: '#666',
+    color: '#999',
     marginBottom: 16,
   },
   metaContainer: {
@@ -218,11 +219,12 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#999',
   },
   metaValue: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
   },
   section: {
     marginBottom: 16,
@@ -231,10 +233,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
+    color: '#fff',
   },
   sectionText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     lineHeight: 20,
   },
   genreContainer: {
@@ -244,14 +247,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   genreTag: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#2a2a2a',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   genreText: {
     fontSize: 12,
-    color: '#666',
+    color: '#ccc',
   },
   reviewButton: {
     backgroundColor: '#007AFF',
@@ -273,13 +276,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 16,
+    color: '#fff',
   },
   noReviews: {
     color: '#999',
     fontStyle: 'italic',
   },
   reviewCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#2a2a2a',
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
@@ -292,19 +296,21 @@ const styles = StyleSheet.create({
   reviewAuthor: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
   },
   reviewRating: {
     fontSize: 14,
-    color: '#666',
+    color: '#007AFF',
   },
   reviewTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+    color: '#fff',
   },
   reviewText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     lineHeight: 20,
   },
 });

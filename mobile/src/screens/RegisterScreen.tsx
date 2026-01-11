@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -46,8 +48,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Sign up to get started</Text>
 
@@ -112,7 +118,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -120,7 +127,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a1a',
   },
   scrollContent: {
     flexGrow: 1,
@@ -133,12 +140,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#999',
     marginBottom: 32,
   },
   form: {
@@ -147,12 +154,13 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#333',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#2a2a2a',
+    color: '#fff',
   },
   button: {
     height: 50,
@@ -175,7 +183,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#666',
+    color: '#999',
     fontSize: 14,
   },
   linkBold: {
