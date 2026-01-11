@@ -8,12 +8,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  Animated,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { reviewsService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { ActivityStackParamList } from "../navigation/AppNavigator";
+import { Ionicons } from "@expo/vector-icons";
 
 type ActivityScreenNavigationProp = NativeStackNavigationProp<
   ActivityStackParamList,
@@ -110,19 +112,47 @@ const ActivityScreen: React.FC = () => {
     }
   };
 
-  const renderReview = ({ item }: { item: any }) => {
+  // Get rating color and style
+  const getRatingStyle = (rating: number) => {
+    if (rating >= 8) {
+      return {
+        backgroundColor: "#4CAF50",
+        color: "#FFFFFF",
+        icon: "star" as const,
+      };
+    } else if (rating >= 5) {
+      return {
+        backgroundColor: "#FFA726",
+        color: "#FFFFFF",
+        icon: "star" as const,
+      };
+    } else {
+      return {
+        backgroundColor: "#EF5350",
+        color: "#FFFFFF",
+        icon: "star" as const,
+      };
+    }
+  };
+
+  const renderReview = ({ item, index }: { item: any; index: number }) => {
     const movie = item.movieId || {};
     const reviewer = item.userId || {};
     const timeAgo = item.createdAt ? formatRelativeTime(item.createdAt) : "";
+    const rating = item.rating || 0;
+    const ratingStyle = getRatingStyle(rating);
+    const reviewText = item.review || "No review text";
+    const isLongReview = reviewText.length > 200;
+    const isMediumReview = reviewText.length > 100 && reviewText.length <= 200;
 
     return (
       <TouchableOpacity
         style={styles.reviewCard}
         onPress={() => handleReviewPress(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.95}
       >
         <View style={styles.reviewContent}>
-          {/* Horizontal Layout: Poster and All Info */}
+          {/* Movie Row: Poster + Title + Rating */}
           <View style={styles.movieRow}>
             {/* Movie Poster */}
             {movie.posterUrl ? (
@@ -133,57 +163,93 @@ const ActivityScreen: React.FC = () => {
               />
             ) : (
               <View style={[styles.moviePoster, styles.posterPlaceholder]}>
-                <Text style={styles.posterPlaceholderText}>🎬</Text>
+                <Ionicons name="film-outline" size={32} color="#666" />
               </View>
             )}
 
-            {/* All Content Beside Poster */}
+            {/* Content Section */}
             <View style={styles.contentSection}>
-              {/* Movie Name */}
-              <Text style={styles.movieTitle} numberOfLines={2}>
-                {movie.title || "Unknown Movie"}
-              </Text>
-
-              {/* Year and Rating */}
-              <View style={styles.movieMeta}>
-                {movie.releaseDate && (
-                  <>
+              {/* Movie Title and Year */}
+              <View style={styles.titleRow}>
+                <View style={styles.titleContainer}>
+                  <Text style={styles.movieTitle} numberOfLines={2}>
+                    {movie.title || "Unknown Movie"}
+                  </Text>
+                  {movie.releaseDate && (
                     <Text style={styles.movieYear}>
-                      {new Date(movie.releaseDate).getFullYear()}
+                      ({new Date(movie.releaseDate).getFullYear()})
                     </Text>
-                    <View style={styles.divider} />
-                  </>
-                )}
-                <Text style={styles.reviewRating}>
-                  ⭐ {item.rating || 0}/10
-                </Text>
+                  )}
+                </View>
+                {/* Rating Badge */}
+                <View
+                  style={[
+                    styles.ratingBadge,
+                    { backgroundColor: ratingStyle.backgroundColor },
+                  ]}
+                >
+                  <Ionicons
+                    name={ratingStyle.icon}
+                    size={14}
+                    color={ratingStyle.color}
+                  />
+                  <Text
+                    style={[styles.ratingText, { color: ratingStyle.color }]}
+                  >
+                    {rating.toFixed(1)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ratingDenominator,
+                      { color: ratingStyle.color },
+                    ]}
+                  >
+                    /10
+                  </Text>
+                </View>
               </View>
 
-              {/* User Name and Time */}
+              {/* User Info Row */}
               <View style={styles.userRow}>
                 <View style={styles.userInfo}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {(reviewer.username || "A").charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
+                  {reviewer.avatar ? (
+                    <Image
+                      source={{ uri: reviewer.avatar }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>
+                        {(reviewer.username || "A").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
                   <Text style={styles.reviewerName} numberOfLines={1}>
                     {reviewer.username || "Anonymous"}
                   </Text>
                 </View>
                 {timeAgo && <Text style={styles.reviewTime}>{timeAgo}</Text>}
               </View>
-
-              {/* Review Text */}
-              <Text style={styles.reviewText} numberOfLines={3}>
-                {item.review || "No review text"}
-              </Text>
-
-              {/* Read More Indicator */}
-              {item.review && item.review.length > 150 && (
-                <Text style={styles.readMore}>Tap to read full review →</Text>
-              )}
             </View>
+          </View>
+
+          {/* Review Text */}
+          <View style={styles.reviewTextContainer}>
+            <Text
+              style={styles.reviewText}
+              numberOfLines={isLongReview || isMediumReview ? 3 : undefined}
+            >
+              {reviewText}
+            </Text>
+            {(isLongReview || isMediumReview) && (
+              <TouchableOpacity
+                style={styles.readMoreButton}
+                onPress={() => handleReviewPress(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.readMoreText}>Read full review →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -223,11 +289,23 @@ const ActivityScreen: React.FC = () => {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📝</Text>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="film-outline" size={64} color="#666" />
+              </View>
               <Text style={styles.emptyTitle}>No Reviews Yet</Text>
               <Text style={styles.emptyText}>
-                Be the first to share your thoughts on a movie!
+                Start reviewing movies to see them appear here!
               </Text>
+              <TouchableOpacity
+                style={styles.browseButton}
+                onPress={() => {
+                  // Navigate to movies screen
+                  navigation.navigate("MovieDetails" as any, {});
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.browseButtonText}>Browse Movies</Text>
+              </TouchableOpacity>
             </View>
           ) : null
         }
@@ -264,15 +342,16 @@ const styles = StyleSheet.create({
     borderBottomColor: "#333",
   },
   reviewContent: {
-    padding: 16,
+    padding: 14,
   },
   movieRow: {
     flexDirection: "row",
     alignItems: "flex-start",
+    marginBottom: 10,
   },
   moviePoster: {
-    width: 60,
-    height: 90,
+    width: 55,
+    height: 82,
     borderRadius: 8,
     backgroundColor: "#333",
     marginRight: 12,
@@ -282,44 +361,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#333",
   },
-  posterPlaceholderText: {
-    fontSize: 24,
-  },
   contentSection: {
     flex: 1,
     paddingRight: 4,
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+    gap: 10,
+  },
+  titleContainer: {
+    flex: 1,
   },
   movieTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
-    marginBottom: 4,
-  },
-  movieMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
+    marginBottom: 3,
+    lineHeight: 20,
   },
   movieYear: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: "500",
     color: "#999",
   },
-  divider: {
-    width: 1,
-    height: 12,
-    backgroundColor: "#555",
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 3,
   },
-  reviewRating: {
-    fontSize: 13,
-    color: "#FFD700",
+  ratingText: {
+    fontSize: 14,
     fontWeight: "700",
+  },
+  ratingDenominator: {
+    fontSize: 11,
+    fontWeight: "600",
+    opacity: 0.9,
   },
   userRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 6,
+    gap: 8,
+    marginBottom: 8,
   },
   userInfo: {
     flexDirection: "row",
@@ -334,6 +424,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 6,
+    overflow: "hidden",
   },
   avatarText: {
     fontSize: 12,
@@ -344,44 +435,71 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#fff",
+    flex: 1,
   },
   reviewTime: {
     fontSize: 11,
-    color: "#999",
+    fontWeight: "400",
+    color: "#666",
+  },
+  reviewTextContainer: {
+    marginTop: 4,
   },
   reviewText: {
     fontSize: 14,
+    fontWeight: "400",
     color: "#ddd",
     lineHeight: 20,
-    marginBottom: 4,
   },
-  readMore: {
+  readMoreButton: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  readMoreText: {
     fontSize: 13,
-    color: "#007AFF",
     fontWeight: "600",
-    marginTop: 4,
+    color: "#007AFF",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 80,
+    paddingHorizontal: 40,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#2a2a2a",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#fff",
     marginBottom: 8,
+    textAlign: "center",
   },
   emptyText: {
     fontSize: 15,
     color: "#999",
     textAlign: "center",
-    paddingHorizontal: 40,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  browseButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  browseButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
 

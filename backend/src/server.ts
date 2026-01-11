@@ -37,11 +37,13 @@ import moviesRouter from './routes/movies';
 import reviewsRouter from './routes/reviews';
 import authRouter from './routes/auth';
 import movieSearchRouter from './routes/movieSearch';
+import watchlistRouter from './routes/watchlist';
 
 app.use('/api/movies', moviesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/movie-search', movieSearchRouter);
+app.use('/api/watchlist', watchlistRouter);
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {

@@ -74,6 +74,54 @@ export const authService = {
   async verifyToken() {
     return await apiClient.get('/auth/verify');
   },
+
+  async updateProfile(data: { name?: string; avatar?: string; location?: string }) {
+    const response = await apiClient.put('/auth/profile', data);
+    if (response.data.user) {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
+  async getStats() {
+    const response = await apiClient.get('/auth/stats');
+    return response.data;
+  },
+
+  async getMyReviews(limit?: number) {
+    const response = await apiClient.get('/auth/reviews', { params: { limit } });
+    return response.data;
+  },
+};
+
+// Watchlist Service
+export const watchlistService = {
+  async getAll(params?: { page?: number; limit?: number }) {
+    const response = await apiClient.get('/watchlist', { params });
+    return response.data;
+  },
+
+  async getCount() {
+    const response = await apiClient.get('/watchlist/count');
+    return response.data;
+  },
+
+  async add(movieId?: string, tmdbId?: number) {
+    const response = await apiClient.post('/watchlist', { movieId, tmdbId });
+    return response.data;
+  },
+
+  async remove(id: string) {
+    const response = await apiClient.delete(`/watchlist/${id}`);
+    return response.data;
+  },
+
+  async check(movieId?: string, tmdbId?: number) {
+    const response = await apiClient.get('/watchlist/check', {
+      params: { movieId, tmdbId },
+    });
+    return response.data;
+  },
 };
 
 // Movies Service

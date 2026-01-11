@@ -13,6 +13,7 @@ interface User {
   email: string;
   name?: string;
   avatar?: string;
+  location?: string;
 }
 
 interface AuthContextType {
@@ -28,6 +29,7 @@ interface AuthContextType {
     name?: string
   ) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,6 +94,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setToken(null);
   };
 
+  const updateUser = async (userData: Partial<User>) => {
+    const response = await authService.updateProfile(userData);
+    if (response.user) {
+      setUser(response.user);
+    }
+  };
+
   // Ensure primitive booleans - use !! to convert to boolean primitive
   const isLoadingValue: boolean = !!isLoading;
   const isAuthenticatedValue: boolean = !!(user && token);
@@ -104,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     login,
     register,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

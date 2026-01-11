@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password: string;
   name?: string;
   avatar?: string;
+  location?: string;
   createdAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }

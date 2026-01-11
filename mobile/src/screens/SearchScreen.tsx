@@ -14,18 +14,19 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { movieSearchService, moviesService } from "../services/api";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const NUM_COLUMNS = 3;
-const CARD_MARGIN = 4;
-const LIST_PADDING = 8;
-const CARD_WIDTH =
-  (SCREEN_WIDTH - LIST_PADDING * 2 - CARD_MARGIN * (NUM_COLUMNS * 2)) /
-  NUM_COLUMNS;
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SearchStackParamList } from "../navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const NUM_COLUMNS = 3;
+const CARD_MARGIN = 4;
+const LIST_PADDING = 6;
+const CARD_WIDTH =
+  (SCREEN_WIDTH - LIST_PADDING * 2 - CARD_MARGIN * (NUM_COLUMNS * 2)) /
+  NUM_COLUMNS;
 
 interface Movie {
   _id?: string;
@@ -64,6 +65,15 @@ const GENRE_MAP: { [key: string]: number } = {
 // Common genres for Tollywood/Telugu movies
 const GENRES = Object.keys(GENRE_MAP);
 
+// Rotating placeholder messages
+const PLACEHOLDER_MESSAGES = [
+  "What movie are you craving tonight?",
+  "Search by mood, actor, or vibe...",
+  "Find your next obsession",
+  "Type anything... we'll find it",
+  "Discover your perfect movie",
+];
+
 const SearchScreen: React.FC = () => {
   const navigation = useNavigation<SearchScreenNavigationProp>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,10 +87,20 @@ const SearchScreen: React.FC = () => {
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
 
   useEffect(() => {
     loadRecentSearches();
     loadPopularMovies();
+    loadTrendingSearches();
+
+    // Rotate placeholder every 3 seconds
+    const placeholderInterval = setInterval(() => {
+      setCurrentPlaceholder((prev) => (prev + 1) % PLACEHOLDER_MESSAGES.length);
+    }, 3000);
+
+    return () => clearInterval(placeholderInterval);
   }, []);
 
   // Debounced search effect - triggers search as user types
@@ -130,6 +150,34 @@ const SearchScreen: React.FC = () => {
     }
   };
 
+  const loadTrendingSearches = async (movies?: Movie[]) => {
+    try {
+      // Get popular movie titles as trending searches
+      // For now, use common Telugu movie titles that are likely popular
+      const defaultTrending = ["RRR", "Baahubali", "Pushpa", "KGF", "Salaar"];
+
+      // Use provided movies or current popularMovies state
+      const moviesToUse = movies || popularMovies;
+
+      // Try to get from popular movies if available
+      if (moviesToUse.length > 0) {
+        const titles = moviesToUse
+          .slice(0, 5)
+          .map((m) => m.title)
+          .filter((t) => t && t.length < 20); // Filter out very long titles
+        if (titles.length > 0) {
+          setTrendingSearches(titles);
+          return;
+        }
+      }
+
+      setTrendingSearches(defaultTrending);
+    } catch (error) {
+      console.error("Error loading trending searches:", error);
+      setTrendingSearches(["RRR", "Baahubali", "Pushpa"]);
+    }
+  };
+
   const saveRecentSearch = async (query: string) => {
     try {
       const trimmedQuery = query.trim().toLowerCase();
@@ -150,15 +198,18 @@ const SearchScreen: React.FC = () => {
   const loadPopularMovies = async () => {
     try {
       setLoadingPopular(true);
-      // Calculate date 6 months ago
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      // Calculate date: 10 months ago (movies from last 6-10 months)
+      const tenMonthsAgo = new Date();
+      tenMonthsAgo.setMonth(tenMonthsAgo.getMonth() - 10);
 
       // Fetch multiple pages from TMDB to ensure we have enough movies
       let allMovies: Movie[] = [];
-      const pagesToFetch = 3; // Fetch 3 pages to ensure we get at least 2 movies from last 6 months
+      const targetMovies = 50;
+      const maxPages = 10; // Fetch up to 10 pages to get at least 50 movies
+      let page = 1;
 
-      for (let page = 1; page <= pagesToFetch; page++) {
+      // Keep fetching pages until we have enough movies or run out of pages
+      while (allMovies.length < targetMovies * 2 && page <= maxPages) {
         try {
           const popular = await movieSearchService.getTollywood({
             page,
@@ -166,18 +217,25 @@ const SearchScreen: React.FC = () => {
           });
           if (popular.movies && popular.movies.length > 0) {
             allMovies = [...allMovies, ...popular.movies];
+            page++;
+          } else {
+            // No more movies available
+            break;
           }
         } catch (pageError) {
           console.error(`Error loading page ${page}:`, pageError);
+          break;
         }
       }
 
-      // Filter movies from last 6 months and sort by release date (newest first)
+      // Filter movies from last 6-10 months (released between 10 months ago and now)
+      // and sort by release date (newest first)
       const filtered = allMovies
         .filter((movie: Movie) => {
           if (!movie.releaseDate) return false;
           const releaseDate = new Date(movie.releaseDate);
-          return releaseDate >= sixMonthsAgo;
+          // Movies released in the last 10 months
+          return releaseDate >= tenMonthsAgo;
         })
         .sort((a: Movie, b: Movie) => {
           const dateA = new Date(a.releaseDate || 0).getTime();
@@ -185,24 +243,16 @@ const SearchScreen: React.FC = () => {
           return dateB - dateA; // Descending order (newest first)
         });
 
-      // Ensure at least 2 movies are displayed, or show all if less than 2
-      if (filtered.length >= 2) {
-        setPopularMovies(filtered);
-      } else if (filtered.length > 0) {
-        // If we have 1 movie, show it
-        setPopularMovies(filtered);
-      } else {
-        // If no movies from last 6 months, get the 2 most recent from all movies
-        const sortedAll = allMovies
-          .filter((movie: Movie) => movie.releaseDate)
-          .sort((a: Movie, b: Movie) => {
-            const dateA = new Date(a.releaseDate || 0).getTime();
-            const dateB = new Date(b.releaseDate || 0).getTime();
-            return dateB - dateA;
-          })
-          .slice(0, 2);
-        setPopularMovies(sortedAll);
-      }
+      // Display at least 50 movies (or all available if less than 50)
+      const finalMovies = filtered.slice(
+        0,
+        Math.max(targetMovies, filtered.length)
+      );
+
+      setPopularMovies(finalMovies);
+
+      // Update trending searches after popular movies load
+      loadTrendingSearches(finalMovies);
     } catch (error) {
       console.error("Error loading popular movies:", error);
       setPopularMovies([]);
@@ -398,32 +448,91 @@ const SearchScreen: React.FC = () => {
     }
   };
 
-  const renderMovie = ({ item }: { item: Movie }) => (
-    <TouchableOpacity
-      style={[styles.movieCard, { width: CARD_WIDTH }]}
-      onPress={() => {
-        navigation.navigate("MovieDetails", { movie: item });
-      }}
-    >
-      {item.posterUrl ? (
-        <Image source={{ uri: item.posterUrl }} style={styles.poster} />
-      ) : (
-        <View style={[styles.poster, styles.posterPlaceholder]}>
-          <Text style={styles.posterText}>No Image</Text>
-        </View>
-      )}
-      <View style={styles.movieInfo}>
-        <Text style={styles.movieTitle} numberOfLines={2}>
-          {item.title || "Untitled"}
-        </Text>
-        {item.rating !== undefined &&
-          item.rating !== null &&
-          typeof item.rating === "number" && (
-            <Text style={styles.movieRating}>⭐ {item.rating.toFixed(1)}</Text>
+  const getRatingColor = (rating: number) => {
+    if (rating >= 8) return "#4CAF50";
+    if (rating >= 5) return "#FFA726";
+    return "#EF5350";
+  };
+
+  const getMovieBadge = (
+    movie: Movie
+  ): { label: string; color: string; icon: string } | null => {
+    if (!movie.releaseDate) return null;
+
+    const releaseDate = new Date(movie.releaseDate);
+    const now = new Date();
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    // New badge (released in last 2 months)
+    if (releaseDate >= twoMonthsAgo) {
+      return { label: "New", color: "#4CAF50", icon: "sparkles" };
+    }
+
+    // Top Rated badge (8.5+ rating)
+    if (movie.rating && movie.rating >= 8.5) {
+      return { label: "Top Rated", color: "#FFA726", icon: "star" };
+    }
+
+    // Hidden Gem (8+ rating, but less popular - we'll use rating as proxy)
+    if (movie.rating && movie.rating >= 8 && movie.rating < 8.5) {
+      return { label: "Hidden Gem", color: "#8E44AD", icon: "diamond" };
+    }
+
+    return null;
+  };
+
+  const renderMovie = ({ item }: { item: Movie }) => {
+    const rating = item.rating || 0;
+    const ratingColor = getRatingColor(rating);
+    const year = item.releaseDate
+      ? new Date(item.releaseDate).getFullYear()
+      : null;
+    const badge = getMovieBadge(item);
+
+    return (
+      <TouchableOpacity
+        style={[styles.movieCard, { width: CARD_WIDTH }]}
+        onPress={() => {
+          navigation.navigate("MovieDetails", { movie: item });
+        }}
+        activeOpacity={0.8}
+      >
+        <View style={styles.posterContainer}>
+          {item.posterUrl ? (
+            <Image source={{ uri: item.posterUrl }} style={styles.poster} />
+          ) : (
+            <View style={[styles.poster, styles.posterPlaceholder]}>
+              <Ionicons name="film-outline" size={24} color="#666" />
+            </View>
           )}
-      </View>
-    </TouchableOpacity>
-  );
+          {badge && (
+            <View style={[styles.movieBadge, { backgroundColor: badge.color }]}>
+              <Ionicons name={badge.icon as any} size={10} color="#fff" />
+              <Text style={styles.movieBadgeText}>{badge.label}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.movieInfo}>
+          <Text style={styles.movieTitle} numberOfLines={2}>
+            {item.title || "Untitled"}
+          </Text>
+          <View style={styles.movieMeta}>
+            {year && <Text style={styles.movieDate}>{year}</Text>}
+            {rating > 0 && (
+              <View
+                style={[styles.ratingBadge, { backgroundColor: ratingColor }]}
+              >
+                <Ionicons name="star" size={10} color="#fff" />
+                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+                <Text style={styles.ratingDenominator}>/10</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderRecentSearch = (query: string, index: number) => (
     <TouchableOpacity
@@ -501,7 +610,7 @@ const SearchScreen: React.FC = () => {
           <View style={styles.searchInputContainer}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search movies..."
+              placeholder={PLACEHOLDER_MESSAGES[currentPlaceholder]}
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={(text) => {
@@ -539,6 +648,32 @@ const SearchScreen: React.FC = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Trending Searches */}
+          {!searchQuery.trim() &&
+            !selectedGenre &&
+            trendingSearches.length > 0 && (
+              <View style={styles.trendingSearchesContainer}>
+                <Text style={styles.trendingLabel}>Trending:</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trendingScrollContent}
+                >
+                  {trendingSearches.map((search, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.trendingChip}
+                      onPress={() => handleRecentSearchPress(search)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="flame" size={12} color="#FF6B35" />
+                      <Text style={styles.trendingChipText}>{search}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
         </View>
 
         {renderGenreFilter()}
@@ -549,12 +684,54 @@ const SearchScreen: React.FC = () => {
           </View>
         ) : showSearchResults ? (
           movies.length === 0 ? (
-            <View style={styles.centerContainer}>
-              <Text style={styles.emptyText}>
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="search-outline" size={60} color="#666" />
+              </View>
+              <Text style={styles.emptyTitle}>
                 {selectedGenre
                   ? `No ${selectedGenre} movies found`
-                  : "No movies found"}
+                  : "Hmm, we couldn't find that"}
               </Text>
+              <Text style={styles.emptySubtext}>
+                {selectedGenre
+                  ? "Try selecting a different genre or search for a specific movie"
+                  : "Try:"}
+              </Text>
+              {!selectedGenre && (
+                <View style={styles.emptySuggestions}>
+                  <Text style={styles.emptySuggestionText}>
+                    • Check spelling
+                  </Text>
+                  <Text style={styles.emptySuggestionText}>
+                    • Search by genre instead
+                  </Text>
+                  <Text style={styles.emptySuggestionText}>
+                    • Browse popular movies
+                  </Text>
+                </View>
+              )}
+              {!selectedGenre && (
+                <TouchableOpacity
+                  style={styles.surpriseButton}
+                  onPress={() => {
+                    // Show a random popular movie
+                    if (popularMovies.length > 0) {
+                      const randomMovie =
+                        popularMovies[
+                          Math.floor(Math.random() * popularMovies.length)
+                        ];
+                      navigation.navigate("MovieDetails", {
+                        movie: randomMovie,
+                      });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" />
+                  <Text style={styles.surpriseButtonText}>Surprise me</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <FlatList
@@ -609,14 +786,28 @@ const SearchScreen: React.FC = () => {
               </View>
             )}
 
+            {showRecentSearches && showPopularMovies && (
+              <View style={styles.sectionDivider} />
+            )}
+
             {showPopularMovies && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Popular Movies</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Popular Movies</Text>
+                  {popularMovies.length > 0 && (
+                    <Text style={styles.sectionSubtitle}>
+                      {popularMovies.length} movies
+                    </Text>
+                  )}
+                </View>
                 {loadingPopular ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color="#007AFF" />
+                    <Text style={styles.loadingText}>
+                      Finding great movies...
+                    </Text>
                   </View>
-                ) : (
+                ) : popularMovies.length > 0 ? (
                   <FlatList
                     data={popularMovies}
                     renderItem={renderMovie}
@@ -632,6 +823,12 @@ const SearchScreen: React.FC = () => {
                     contentContainerStyle={styles.list}
                     keyboardShouldPersistTaps="handled"
                   />
+                ) : (
+                  <View style={styles.emptyPopularContainer}>
+                    <Text style={styles.emptyPopularText}>
+                      No popular movies available at the moment
+                    </Text>
+                  </View>
                 )}
               </View>
             )}
@@ -654,12 +851,45 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     padding: 12,
+    paddingBottom: 8,
     backgroundColor: "#1a1a1a",
   },
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     position: "relative",
+    marginBottom: 8,
+  },
+  trendingSearchesContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  trendingLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#999",
+    marginRight: 8,
+  },
+  trendingScrollContent: {
+    gap: 6,
+  },
+  trendingChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#333",
+    gap: 4,
+    marginRight: 6,
+  },
+  trendingChipText: {
+    color: "#999",
+    fontSize: 12,
+    fontWeight: "500",
   },
   searchInput: {
     flex: 1,
@@ -682,8 +912,8 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     color: "#999",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: "600",
   },
   scrollView: {
     flex: 1,
@@ -692,6 +922,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 16,
+  },
+  sectionDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    width: "100%",
   },
   sectionHeader: {
     flexDirection: "row",
@@ -712,10 +947,20 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "600",
   },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#fff",
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "500",
   },
   clearAllText: {
     fontSize: 14,
@@ -728,29 +973,55 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   recentSearchItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: "#2a2a2a",
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#333",
   },
   recentSearchText: {
-    color: "#fff",
+    color: "#999",
     fontSize: 14,
+    fontWeight: "500",
   },
   loadingContainer: {
     paddingVertical: 20,
     alignItems: "center",
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 4,
+  },
+  emptyPopularContainer: {
+    paddingVertical: 30,
+    alignItems: "center",
+  },
+  emptyPopularText: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
   },
   list: {
-    padding: 4,
+    padding: LIST_PADDING,
+    paddingBottom: 24,
   },
   movieCard: {
     margin: CARD_MARGIN,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#2a2a2a",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  posterContainer: {
+    position: "relative",
+    width: "100%",
   },
   poster: {
     width: "100%",
@@ -760,33 +1031,137 @@ const styles = StyleSheet.create({
   posterPlaceholder: {
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#333",
   },
-  posterText: {
-    color: "#999",
-    fontSize: 12,
+  movieBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  movieBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#fff",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   movieInfo: {
-    padding: 8,
+    padding: 6,
   },
   movieTitle: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 4,
     color: "#fff",
+    lineHeight: 16,
   },
-  movieRating: {
-    fontSize: 10,
+  movieMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  movieDate: {
+    fontSize: 12,
+    fontWeight: "500",
     color: "#999",
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  ratingDenominator: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#fff",
+    opacity: 0.9,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#2a2a2a",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  emptySuggestions: {
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  emptySuggestionText: {
+    fontSize: 14,
+    color: "#999",
+    marginBottom: 6,
+    textAlign: "left",
+    lineHeight: 20,
+  },
+  surpriseButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  surpriseButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#999",
+    lineHeight: 20,
   },
   genreFilterContainer: {
     paddingVertical: 16,
@@ -796,20 +1171,18 @@ const styles = StyleSheet.create({
     borderBottomColor: "#333",
   },
   genreFilterTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#999",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
     marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
   genreScrollContent: {
     gap: 8,
   },
   genreChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: "#2a2a2a",
     borderWidth: 1,
     borderColor: "#333",
@@ -821,7 +1194,7 @@ const styles = StyleSheet.create({
   },
   genreChipText: {
     fontSize: 14,
-    color: "#ccc",
+    color: "#999",
     fontWeight: "500",
   },
   genreChipTextActive: {
