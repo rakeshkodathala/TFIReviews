@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -13,7 +11,9 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
+import { AppText, AppTextInput } from "../components/Typography";
 import { useAuth } from "../context/AuthContext";
+import { typography } from "../constants/typography";
 
 interface LoginScreenProps {
   navigation: any;
@@ -55,11 +55,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
+            <AppText style={styles.title}>Welcome Back</AppText>
+            <AppText style={styles.subtitle}>Sign in to continue</AppText>
 
             <View style={styles.form}>
-              <TextInput
+              <AppTextInput
                 style={styles.input}
                 placeholder="Email"
                 placeholderTextColor="#999"
@@ -70,7 +70,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 autoComplete="email"
               />
 
-              <TextInput
+              <AppTextInput
                 style={styles.input}
                 placeholder="Password"
                 placeholderTextColor="#999"
@@ -88,7 +88,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.buttonText}>Login</Text>
+                  <AppText style={styles.buttonText}>Login</AppText>
                 )}
               </TouchableOpacity>
 
@@ -96,10 +96,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 style={styles.linkButton}
                 onPress={() => navigation.navigate("Register")}
               >
-                <Text style={styles.linkText}>
+                <AppText style={styles.linkText}>
                   Don't have an account?{" "}
-                  <Text style={styles.linkBold}>Sign Up</Text>
-                </Text>
+                  <AppText style={styles.linkBold}>Sign Up</AppText>
+                </AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -123,13 +123,13 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   title: {
+    ...typography.styles.h1,
     fontSize: 32,
-    fontWeight: "bold",
     color: "#fff",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.styles.body,
     color: "#999",
     marginBottom: 32,
   },
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     borderColor: "#333",
     borderRadius: 8,
     paddingHorizontal: 16,
-    fontSize: 16,
+    ...typography.styles.body,
     marginBottom: 16,
     backgroundColor: "#2a2a2a",
     color: "#fff",
@@ -159,21 +159,20 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
+    ...typography.styles.button,
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
   linkButton: {
     marginTop: 24,
     alignItems: "center",
   },
   linkText: {
+    ...typography.styles.bodySmall,
     color: "#999",
-    fontSize: 14,
   },
   linkBold: {
+    ...typography.styles.buttonSmall,
     color: "#007AFF",
-    fontWeight: "600",
   },
 });
 

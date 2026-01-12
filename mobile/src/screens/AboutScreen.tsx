@@ -1,12 +1,12 @@
 import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Linking,
 } from "react-native";
+import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
 
 const AboutScreen: React.FC = () => {
@@ -24,17 +24,17 @@ const AboutScreen: React.FC = () => {
           <View style={styles.logoContainer}>
             <Ionicons name="film" size={48} color="#007AFF" />
           </View>
-          <Text style={styles.appName}>TFI Reviews</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
-          <Text style={styles.description}>
+          <AppText style={styles.appName}>TFI Reviews</AppText>
+          <AppText style={styles.version}>Version 1.0.0</AppText>
+          <AppText style={styles.description}>
             Your ultimate destination for Telugu movie reviews and ratings.
             Discover, review, and share your favorite films with the community.
-          </Text>
+          </AppText>
         </View>
 
         {/* Links Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Links</Text>
+          <AppText style={styles.sectionTitle}>Links</AppText>
           <View style={styles.listContainer}>
             <TouchableOpacity
               style={[styles.listItem, styles.listItemFirst]}
@@ -45,7 +45,7 @@ const AboutScreen: React.FC = () => {
                 <View style={styles.listIconContainer}>
                   <Ionicons name="logo-github" size={18} color="#007AFF" />
                 </View>
-                <Text style={styles.listItemValue}>GitHub</Text>
+                <AppText style={styles.listItemValue}>GitHub</AppText>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#666" />
             </TouchableOpacity>
@@ -59,7 +59,7 @@ const AboutScreen: React.FC = () => {
                 <View style={styles.listIconContainer}>
                   <Ionicons name="mail-outline" size={18} color="#007AFF" />
                 </View>
-                <Text style={styles.listItemValue}>Contact Support</Text>
+                <AppText style={styles.listItemValue}>Contact Support</AppText>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#666" />
             </TouchableOpacity>
@@ -73,7 +73,7 @@ const AboutScreen: React.FC = () => {
                 <View style={styles.listIconContainer}>
                   <Ionicons name="shield-outline" size={18} color="#007AFF" />
                 </View>
-                <Text style={styles.listItemValue}>Privacy Policy</Text>
+                <AppText style={styles.listItemValue}>Privacy Policy</AppText>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#666" />
             </TouchableOpacity>
@@ -82,28 +82,28 @@ const AboutScreen: React.FC = () => {
 
         {/* Credits */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Credits</Text>
+          <AppText style={styles.sectionTitle}>Credits</AppText>
           <View style={styles.creditsContainer}>
-            <Text style={styles.creditsText}>
+            <AppText style={styles.creditsText}>
               Movie data provided by{" "}
-              <Text
+              <AppText
                 style={styles.linkText}
                 onPress={() => openLink("https://www.themoviedb.org/")}
               >
                 TMDB
-              </Text>
-            </Text>
-            <Text style={styles.creditsText}>
+              </AppText>
+            </AppText>
+            <AppText style={styles.creditsText}>
               Built with React Native and Expo
-            </Text>
+            </AppText>
           </View>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <AppText style={styles.footerText}>
             © 2024 TFI Reviews. All rights reserved.
-          </Text>
+          </AppText>
         </View>
       </View>
     </ScrollView>

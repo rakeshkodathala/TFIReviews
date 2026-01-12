@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   Image,
-  TextInput,
   Alert,
   ActivityIndicator,
   Keyboard,
@@ -15,6 +13,7 @@ import {
   FlatList,
   Dimensions,
 } from "react-native";
+import { AppText, AppTextInput } from "../components/Typography";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
@@ -244,14 +243,15 @@ const AccountScreen: React.FC = () => {
   ) => (
     <View style={[styles.statCard, { borderLeftColor: color }]}>
       <Ionicons name={icon as any} size={18} color={color} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <AppText style={styles.statValue}>{value}</AppText>
+      <AppText style={styles.statLabel}>{label}</AppText>
     </View>
   );
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
         {showSuccessToast && (
           <Animated.View
             style={[
@@ -260,7 +260,7 @@ const AccountScreen: React.FC = () => {
             ]}
           >
             <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.toastText}>Profile updated successfully!</Text>
+            <AppText style={styles.toastText}>Profile updated successfully!</AppText>
           </Animated.View>
         )}
         <ScrollView
@@ -276,9 +276,9 @@ const AccountScreen: React.FC = () => {
                     <Image source={{ uri: avatar }} style={styles.avatar} />
                   ) : (
                     <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarText}>
+                      <AppText style={styles.avatarText}>
                         {user?.username?.charAt(0).toUpperCase() || "U"}
-                      </Text>
+                      </AppText>
                     </View>
                   )}
                   {editing && (
@@ -294,8 +294,8 @@ const AccountScreen: React.FC = () => {
               </View>
 
               <View style={styles.userInfoContainer}>
-                <Text style={styles.username}>{user?.username || "User"}</Text>
-                <Text style={styles.email}>{user?.email || ""}</Text>
+                <AppText style={styles.username}>{user?.username || "User"}</AppText>
+                <AppText style={styles.email}>{user?.email || ""}</AppText>
                 {stats && (
                   <View style={styles.quickStats}>
                     <View style={styles.quickStatItem}>
@@ -304,9 +304,9 @@ const AccountScreen: React.FC = () => {
                         size={14}
                         color="#007AFF"
                       />
-                      <Text style={styles.quickStatText}>
+                      <AppText style={styles.quickStatText}>
                         {stats.totalReviews} reviews
-                      </Text>
+                      </AppText>
                     </View>
                   </View>
                 )}
@@ -319,7 +319,7 @@ const AccountScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="pencil" size={14} color="#007AFF" />
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
+                  <AppText style={styles.editButtonText}>Edit Profile</AppText>
                 </TouchableOpacity>
               )}
             </View>
@@ -327,7 +327,7 @@ const AccountScreen: React.FC = () => {
             {/* Activity & Stats Section */}
             {!editing && stats && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Activity & Stats</Text>
+                <AppText style={styles.sectionTitle}>Activity & Stats</AppText>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -358,7 +358,7 @@ const AccountScreen: React.FC = () => {
             {/* My Content Section */}
             {!editing && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>My Content</Text>
+                <AppText style={styles.sectionTitle}>My Content</AppText>
 
                 {/* My Reviews */}
                 <TouchableOpacity
@@ -378,17 +378,17 @@ const AccountScreen: React.FC = () => {
                         />
                       </View>
                       <View>
-                        <Text style={styles.contentCardTitle}>My Reviews</Text>
-                        <Text style={styles.contentCardSubtitle}>
+                        <AppText style={styles.contentCardTitle}>My Reviews</AppText>
+                        <AppText style={styles.contentCardSubtitle}>
                           {stats?.totalReviews || 0} total reviews
-                        </Text>
+                        </AppText>
                       </View>
                     </View>
                     {recentReviews.length > 0 && (
                       <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
+                        <AppText style={styles.badgeText}>
                           {recentReviews.length}
-                        </Text>
+                        </AppText>
                       </View>
                     )}
                   </View>
@@ -411,17 +411,17 @@ const AccountScreen: React.FC = () => {
                             </View>
                           )}
                           <View style={styles.reviewPreviewInfo}>
-                            <Text
+                            <AppText
                               style={styles.reviewPreviewTitle}
                               numberOfLines={1}
                             >
                               {review.movieId?.title || "Unknown"}
-                            </Text>
+                            </AppText>
                             <View style={styles.reviewPreviewRating}>
                               <Ionicons name="star" size={12} color="#FFD700" />
-                              <Text style={styles.reviewPreviewRatingText}>
+                              <AppText style={styles.reviewPreviewRatingText}>
                                 {review.rating}/10
-                              </Text>
+                              </AppText>
                             </View>
                           </View>
                         </View>
@@ -429,7 +429,7 @@ const AccountScreen: React.FC = () => {
                     </View>
                   )}
                   <View style={styles.contentCardFooter}>
-                    <Text style={styles.viewAllText}>View All Reviews</Text>
+                    <AppText style={styles.viewAllText}>View All Reviews</AppText>
                     <Ionicons
                       name="chevron-forward"
                       size={16}
@@ -456,22 +456,22 @@ const AccountScreen: React.FC = () => {
                         />
                       </View>
                       <View>
-                        <Text style={styles.contentCardTitle}>Watchlist</Text>
-                        <Text style={styles.contentCardSubtitle}>
+                        <AppText style={styles.contentCardTitle}>Watchlist</AppText>
+                        <AppText style={styles.contentCardSubtitle}>
                           {watchlistLoading
                             ? "Loading..."
                             : `${watchlistCount} movies saved`}
-                        </Text>
+                        </AppText>
                       </View>
                     </View>
                     {watchlistCount > 0 && (
                       <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{watchlistCount}</Text>
+                        <AppText style={styles.badgeText}>{watchlistCount}</AppText>
                       </View>
                     )}
                   </View>
                   <View style={styles.contentCardFooter}>
-                    <Text style={styles.viewAllText}>Manage Watchlist</Text>
+                    <AppText style={styles.viewAllText}>Manage Watchlist</AppText>
                     <Ionicons
                       name="chevron-forward"
                       size={16}
@@ -484,9 +484,9 @@ const AccountScreen: React.FC = () => {
 
             {/* Profile Information Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
+              <AppText style={styles.sectionTitle}>
                 {editing ? "Edit Profile" : "Profile Information"}
-              </Text>
+              </AppText>
 
               <View style={styles.listContainer}>
                 {/* Name Field */}
@@ -500,9 +500,9 @@ const AccountScreen: React.FC = () => {
                       />
                     </View>
                     <View style={styles.listItemContent}>
-                      <Text style={styles.listItemLabel}>Name</Text>
+                      <AppText style={styles.listItemLabel}>Name</AppText>
                       {editing ? (
-                        <TextInput
+                        <AppTextInput
                           style={styles.listItemInput}
                           value={name}
                           onChangeText={setName}
@@ -510,11 +510,11 @@ const AccountScreen: React.FC = () => {
                           placeholderTextColor="#666"
                         />
                       ) : (
-                        <Text style={styles.listItemValue}>
+                        <AppText style={styles.listItemValue}>
                           {user?.name || (
-                            <Text style={styles.emptyValue}>Not set</Text>
+                            <AppText style={styles.emptyValue}>Not set</AppText>
                           )}
-                        </Text>
+                        </AppText>
                       )}
                     </View>
                   </View>
@@ -531,10 +531,10 @@ const AccountScreen: React.FC = () => {
                       />
                     </View>
                     <View style={styles.listItemContent}>
-                      <Text style={styles.listItemLabel}>Location</Text>
+                      <AppText style={styles.listItemLabel}>Location</AppText>
                       {editing ? (
                         <View style={styles.locationInputContainer}>
-                          <TextInput
+                          <AppTextInput
                             style={[styles.listItemInput, styles.locationInput]}
                             value={location}
                             onChangeText={setLocation}
@@ -559,11 +559,11 @@ const AccountScreen: React.FC = () => {
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <Text style={styles.listItemValue}>
+                        <AppText style={styles.listItemValue}>
                           {user?.location || (
-                            <Text style={styles.emptyValue}>Not set</Text>
+                            <AppText style={styles.emptyValue}>Not set</AppText>
                           )}
-                        </Text>
+                        </AppText>
                       )}
                     </View>
                   </View>
@@ -574,7 +574,7 @@ const AccountScreen: React.FC = () => {
             {/* Settings Section */}
             {!editing && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Settings</Text>
+                <AppText style={styles.sectionTitle}>Settings</AppText>
 
                 <View style={styles.listContainer}>
                   <TouchableOpacity
@@ -592,7 +592,7 @@ const AccountScreen: React.FC = () => {
                           color="#007AFF"
                         />
                       </View>
-                      <Text style={styles.listItemValue}>App Settings</Text>
+                      <AppText style={styles.listItemValue}>App Settings</AppText>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#666" />
                   </TouchableOpacity>
@@ -612,7 +612,7 @@ const AccountScreen: React.FC = () => {
                           color="#007AFF"
                         />
                       </View>
-                      <Text style={styles.listItemValue}>Notifications</Text>
+                      <AppText style={styles.listItemValue}>Notifications</AppText>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#666" />
                   </TouchableOpacity>
@@ -632,7 +632,7 @@ const AccountScreen: React.FC = () => {
                           color="#007AFF"
                         />
                       </View>
-                      <Text style={styles.listItemValue}>About</Text>
+                      <AppText style={styles.listItemValue}>About</AppText>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="#666" />
                   </TouchableOpacity>
@@ -649,7 +649,7 @@ const AccountScreen: React.FC = () => {
                   disabled={loading}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <AppText style={styles.cancelButtonText}>Cancel</AppText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.saveButton]}
@@ -662,7 +662,7 @@ const AccountScreen: React.FC = () => {
                   ) : (
                     <View style={styles.saveButtonContent}>
                       <Ionicons name="checkmark" size={18} color="#fff" />
-                      <Text style={styles.saveButtonText}>Save</Text>
+                      <AppText style={styles.saveButtonText}>Save</AppText>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -674,13 +674,14 @@ const AccountScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 <Ionicons name="log-out-outline" size={20} color="#fff" />
-                <Text style={styles.logoutButtonText}>Logout</Text>
+                <AppText style={styles.logoutButtonText}>Logout</AppText>
               </TouchableOpacity>
             )}
           </View>
         </ScrollView>
-      </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </View>
   );
 };
 

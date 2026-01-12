@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -15,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   Image,
 } from 'react-native';
+import { AppText, AppTextInput } from '../components/Typography';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewsService } from '../services/api';
@@ -167,13 +166,13 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
     return (
       <View style={styles.ratingSection}>
         <View style={styles.ratingHeader}>
-          <Text style={styles.ratingLabel}>How would you rate this movie?</Text>
+          <AppText style={styles.ratingLabel}>How would you rate this movie?</AppText>
           {rating > 0 && (
             <View style={[styles.ratingBadge, { borderColor: getRatingColor(rating) }]}>
-              <Text style={styles.ratingBadgeText}>{rating}/10</Text>
-              <Text style={[styles.ratingBadgeLabel, { color: getRatingColor(rating) }]}>
+              <AppText style={styles.ratingBadgeText}>{rating}/10</AppText>
+              <AppText style={[styles.ratingBadgeLabel, { color: getRatingColor(rating) }]}>
                 {getRatingLabel(rating)}
-              </Text>
+              </AppText>
             </View>
           )}
         </View>
@@ -214,9 +213,9 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
           ]}
         >
           <Ionicons name="checkmark-circle" size={20} color="#fff" />
-          <Text style={styles.toastText} numberOfLines={1}>
+          <AppText style={styles.toastText} numberOfLines={1}>
             {movie.title || 'Movie'} - Review {isEditing ? 'updated' : 'added'} successfully!
-          </Text>
+          </AppText>
         </Animated.View>
       )}
 
@@ -239,13 +238,13 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
                 />
               )}
               <View style={styles.movieInfo}>
-                <Text style={styles.movieTitle} numberOfLines={2}>
+                <AppText style={styles.movieTitle} numberOfLines={2}>
                   {movie.title || 'Untitled'}
-                </Text>
+                </AppText>
                 {movie.releaseDate && (
-                  <Text style={styles.movieYear}>
+                  <AppText style={styles.movieYear}>
                     {new Date(movie.releaseDate).getFullYear()}
-                  </Text>
+                  </AppText>
                 )}
               </View>
             </View>
@@ -256,12 +255,12 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
             {/* Review Text Section */}
             <View style={styles.reviewSection}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewLabel}>
+                <AppText style={styles.reviewLabel}>
                   Share your thoughts {isEditing && '(Editing)'}
-                </Text>
-                <Text style={styles.characterCount}>
+                </AppText>
+                <AppText style={styles.characterCount}>
                   {reviewLength}/{maxReviewLength}
-                </Text>
+                </AppText>
               </View>
               
               <View
@@ -271,7 +270,7 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
                   reviewLength < minReviewLength && reviewLength > 0 && styles.textAreaContainerWarning,
                 ]}
               >
-                <TextInput
+                <AppTextInput
                   style={styles.textArea}
                   placeholder="What did you think of this movie? Share your honest opinion..."
                   placeholderTextColor="#666"
@@ -288,9 +287,9 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
                 {reviewLength > 0 && reviewLength < minReviewLength && (
                   <View style={styles.minLengthWarning}>
                     <Ionicons name="information-circle" size={16} color="#FFC107" />
-                    <Text style={styles.minLengthText}>
+                    <AppText style={styles.minLengthText}>
                       At least {minReviewLength} characters required ({minReviewLength - reviewLength} more)
-                    </Text>
+                    </AppText>
                   </View>
                 )}
               </View>
@@ -298,9 +297,9 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
               {/* Helper Text */}
               <View style={styles.helperTextContainer}>
                 <Ionicons name="bulb-outline" size={16} color="#666" />
-                <Text style={styles.helperText}>
+                <AppText style={styles.helperText}>
                   Be honest and specific. Your review helps others discover great movies!
-                </Text>
+                </AppText>
               </View>
             </View>
 
@@ -323,9 +322,9 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
                     size={20}
                     color="#fff"
                   />
-                  <Text style={styles.submitButtonText}>
+                  <AppText style={styles.submitButtonText}>
                     {isEditing ? 'Update Review' : 'Submit Review'}
-                  </Text>
+                  </AppText>
                 </>
               )}
             </TouchableOpacity>

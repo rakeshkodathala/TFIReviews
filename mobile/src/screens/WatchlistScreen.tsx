@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   RefreshControl,
@@ -10,6 +9,7 @@ import {
   Image,
   Alert,
 } from "react-native";
+import { AppText } from "../components/Typography";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { watchlistService } from "../services/api";
@@ -124,17 +124,17 @@ const WatchlistScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.movieInfo}>
-          <Text style={styles.movieTitle} numberOfLines={2}>
+          <AppText style={styles.movieTitle} numberOfLines={2}>
             {movie.title || "Untitled"}
-          </Text>
+          </AppText>
           <View style={styles.movieMeta}>
-            {year && <Text style={styles.movieDate}>{year}</Text>}
+            {year && <AppText style={styles.movieDate}>{year}</AppText>}
             {rating > 0 && (
               <View
                 style={[styles.ratingBadge, { backgroundColor: ratingColor }]}
               >
-                <Ionicons name="star" size={10} color="#fff" />
-                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+                <Ionicons name="star" size={8} color="#fff" />
+                <AppText style={styles.ratingText}>{rating.toFixed(1)}</AppText>
               </View>
             )}
           </View>
@@ -175,10 +175,10 @@ const WatchlistScreen: React.FC = () => {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="bookmark-outline" size={64} color="#666" />
             </View>
-            <Text style={styles.emptyTitle}>Your Watchlist is Empty</Text>
-            <Text style={styles.emptyText}>
+            <AppText style={styles.emptyTitle}>Your Watchlist is Empty</AppText>
+            <AppText style={styles.emptyText}>
               Add movies to your watchlist to watch them later!
-            </Text>
+            </AppText>
           </View>
         }
       />
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 2 / 3,
+    aspectRatio: 0.55,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
@@ -264,13 +264,13 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    gap: 2,
+    paddingHorizontal: 3,
+    paddingVertical: 0,
+    borderRadius: 6,
+    gap: 1,
   },
   ratingText: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: "700",
     color: "#fff",
   },

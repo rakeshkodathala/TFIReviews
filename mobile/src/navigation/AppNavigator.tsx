@@ -1,7 +1,9 @@
 import React from "react";
+import { Platform, StatusBar } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -97,13 +99,24 @@ const AuthStack = () => {
 
 // Home Stack Navigator
 const HomeStack = () => {
+  const insets = useSafeAreaInsets();
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+  
   return (
     <HomeStackNav.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerStyle: { 
+          backgroundColor: "#1a1a1a",
+          elevation: 0,
+          shadowOpacity: 0,
+        },
         headerTintColor: "#fff",
-        headerTitleStyle: { color: "#fff" },
-        contentStyle: { backgroundColor: "#1a1a1a" },
+        headerTitleStyle: { 
+          color: "#fff",
+        },
+        contentStyle: { 
+          backgroundColor: "#1a1a1a",
+        },
         headerBackTitle: "",
         gestureEnabled: true,
         gestureDirection: "horizontal",
@@ -157,7 +170,11 @@ const SearchStack = () => {
   return (
     <SearchStackNav.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerStyle: { 
+          backgroundColor: "#1a1a1a",
+          elevation: 0,
+          shadowOpacity: 0,
+        },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
@@ -209,7 +226,11 @@ const ActivityStack = () => {
   return (
     <ActivityStackNav.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerStyle: { 
+          backgroundColor: "#1a1a1a",
+          elevation: 0,
+          shadowOpacity: 0,
+        },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
@@ -261,7 +282,11 @@ const AccountStack = () => {
   return (
     <AccountStackNav.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#1a1a1a" },
+        headerStyle: { 
+          backgroundColor: "#1a1a1a",
+          elevation: 0,
+          shadowOpacity: 0,
+        },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
         contentStyle: { backgroundColor: "#1a1a1a" },
@@ -363,6 +388,8 @@ const MainStack = () => {
 
 // Main Tabs (Bottom Navigation)
 const MainTabs = () => {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -389,6 +416,10 @@ const MainTabs = () => {
         tabBarStyle: {
           backgroundColor: "#1a1a1a",
           borderTopColor: "#333",
+          borderTopWidth: 1,
+          height: Platform.OS === "android" ? 60 + insets.bottom : 60 + insets.bottom,
+          paddingBottom: Platform.OS === "android" ? insets.bottom : 5,
+          paddingTop: 8,
         },
       })}
     >

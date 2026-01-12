@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   StyleSheet,
   Image,
@@ -13,10 +12,11 @@ import {
   Share,
   Platform,
 } from 'react-native';
+import { AppText } from '../components/Typography';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { movieSearchService, reviewsService } from '../services/api';
+import { movieSearchService, reviewsService, watchlistService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HomeStackParamList } from '../navigation/AppNavigator';
 
@@ -34,6 +34,9 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const [loading, setLoading] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [reviewSort, setReviewSort] = useState<'recent' | 'highest' | 'lowest'>('recent');
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistId, setWatchlistId] = useState<string | null>(null);
   const { isAuthenticated, user } = useAuth();
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -63,6 +66,9 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
         setLoading(false);
       }
       loadReviews(movieData);
+      if (isAuthenticated) {
+        checkWatchlistStatus(movieData);
+      }
     } else {
       setLoading(false);
       setLoadingReviews(false);
@@ -74,8 +80,11 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
     useCallback(() => {
       if (initialMovie) {
         loadReviews(initialMovie);
+        if (isAuthenticated) {
+          checkWatchlistStatus(initialMovie);
+        }
       }
-    }, [initialMovie])
+    }, [initialMovie, isAuthenticated])
   );
 
   const loadMovieDetails = async (tmdbId: number) => {
@@ -105,6 +114,56 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
       console.error('Error loading reviews:', error);
     } finally {
       setLoadingReviews(false);
+    }
+  };
+
+  const checkWatchlistStatus = async (movieData: any) => {
+    try {
+      const response = await watchlistService.check(
+        movieData._id,
+        movieData.tmdbId
+      );
+      setIsInWatchlist(response.isInWatchlist || false);
+      if (response.watchlistItem) {
+        setWatchlistId(response.watchlistItem._id || response.watchlistItem.id);
+      }
+    } catch (error) {
+      console.error('Error checking watchlist status:', error);
+    }
+  };
+
+  const handleToggleWatchlist = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Login Required', 'Please login to add movies to your watchlist');
+      return;
+    }
+
+    try {
+      setWatchlistLoading(true);
+      if (isInWatchlist && watchlistId) {
+        await watchlistService.remove(watchlistId);
+        setIsInWatchlist(false);
+        setWatchlistId(null);
+        Alert.alert('Removed', 'Movie removed from watchlist');
+      } else {
+        const response = await watchlistService.add(
+          movie._id,
+          movie.tmdbId
+        );
+        setIsInWatchlist(true);
+        if (response.watchlistItem) {
+          setWatchlistId(response.watchlistItem._id || response.watchlistItem.id);
+        }
+        Alert.alert('Added', 'Movie added to watchlist');
+      }
+    } catch (error: any) {
+      console.error('Error toggling watchlist:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.error || 'Failed to update watchlist'
+      );
+    } finally {
+      setWatchlistLoading(false);
     }
   };
 
@@ -226,9 +285,9 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.stickyHeaderTitle} numberOfLines={1}>
+        <AppText style={styles.stickyHeaderTitle} numberOfLines={1}>
           {movie.title || 'Movie'}
-        </Text>
+        </AppText>
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={22} color="#fff" />
         </TouchableOpacity>
@@ -299,23 +358,23 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
               <View style={styles.heroInfo}>
                 <View style={styles.heroTitleRow}>
                   <View style={styles.heroTitleContainer}>
-                    <Text style={styles.title}>{movie.title || 'Untitled'}</Text>
+                    <AppText style={styles.title}>{movie.title || 'Untitled'}</AppText>
                     
                     {movie.titleTelugu && (
-                      <Text style={styles.titleTelugu}>{movie.titleTelugu}</Text>
+                      <AppText style={styles.titleTelugu}>{movie.titleTelugu}</AppText>
                     )}
                     
                     <View style={styles.heroMeta}>
                       {releaseYear && (
-                        <Text style={styles.heroMetaText}>{releaseYear}</Text>
+                        <AppText style={styles.heroMetaText}>{releaseYear}</AppText>
                       )}
                       {movie.genre && movie.genre.length > 0 && releaseYear && (
-                        <Text style={styles.heroMetaText}> • </Text>
+                        <AppText style={styles.heroMetaText}> • </AppText>
                       )}
                       {movie.genre && movie.genre.length > 0 && (
-                        <Text style={styles.heroMetaText}>
+                        <AppText style={styles.heroMetaText}>
                           {movie.genre.slice(0, 2).join(', ')}
-                        </Text>
+                        </AppText>
                       )}
                     </View>
                   </View>
@@ -333,10 +392,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           { borderColor: getRatingColor(movie.rating) },
                         ]}
                       >
-                        <Text style={styles.heroRatingNumber}>
+                        <AppText style={styles.heroRatingNumber}>
                           {movie.rating.toFixed(1)}
-                        </Text>
-                        <Text style={styles.heroRatingLabel}>TFI</Text>
+                        </AppText>
+                        <AppText style={styles.heroRatingLabel}>TFI</AppText>
                       </View>
                     </Animated.View>
                   )}
@@ -353,6 +412,34 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             { opacity: fadeAnim },
           ]}
         >
+          {/* Watchlist Button */}
+          {isAuthenticated && (
+            <TouchableOpacity
+              style={[
+                styles.watchlistButton,
+                isInWatchlist && styles.watchlistButtonActive,
+              ]}
+              onPress={handleToggleWatchlist}
+              disabled={watchlistLoading}
+              activeOpacity={0.8}
+            >
+              {watchlistLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={isInWatchlist ? "bookmark" : "bookmark-outline"}
+                    size={20}
+                    color="#fff"
+                  />
+                  <AppText style={styles.watchlistButtonText}>
+                    {isInWatchlist ? "In Watchlist" : "Add to Watchlist"}
+                  </AppText>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
           {/* Primary CTA - Write Review */}
           {!userReview && (
             <TouchableOpacity
@@ -363,12 +450,12 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
               <View style={styles.primaryCTAContent}>
                 <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
                 <View style={styles.primaryCTAText}>
-                  <Text style={styles.primaryCTATitle}>Share Your Thoughts</Text>
-                  <Text style={styles.primaryCTASubtitle}>
+                  <AppText style={styles.primaryCTATitle}>Share Your Thoughts</AppText>
+                  <AppText style={styles.primaryCTASubtitle}>
                     {reviews.length === 0
                       ? 'Be the first to review this movie'
                       : `${reviews.length} people have reviewed this`}
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#fff" />
@@ -381,10 +468,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
               <View style={styles.ratingCardHeader}>
                 <View style={styles.ratingCardTitleRow}>
                   <Ionicons name="star" size={20} color="#FFD700" />
-                  <Text style={styles.ratingCardTitle}>Your Rating</Text>
+                  <AppText style={styles.ratingCardTitle}>Your Rating</AppText>
                 </View>
                 <TouchableOpacity onPress={handleWriteReview}>
-                  <Text style={styles.editButtonText}>Edit</Text>
+                  <AppText style={styles.editButtonText}>Edit</AppText>
                 </TouchableOpacity>
               </View>
               <View style={styles.ratingCardContent}>
@@ -394,28 +481,28 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     { borderColor: getRatingColor(userReview.rating) },
                   ]}
                 >
-                  <Text style={styles.yourRatingNumber}>
+                  <AppText style={styles.yourRatingNumber}>
                     {userReview.rating}/10
-                  </Text>
+                  </AppText>
                 </View>
                 <View style={styles.ratingCardInfo}>
-                  <Text style={styles.ratingCardMessage}>
+                  <AppText style={styles.ratingCardMessage}>
                     {userReview.rating >= 8
                       ? "You loved this! 🎬"
                       : userReview.rating >= 6
                       ? "You liked this 👍"
                       : "You didn't enjoy this"}
-                  </Text>
+                  </AppText>
                   {userReview.review && (
-                    <Text style={styles.ratingCardSnippet} numberOfLines={2}>
+                    <AppText style={styles.ratingCardSnippet} numberOfLines={2}>
                       "{userReview.review}"
-                    </Text>
+                    </AppText>
                   )}
                   <TouchableOpacity
                     style={styles.viewFullReviewButton}
                     onPress={handleWriteReview}
                   >
-                    <Text style={styles.viewFullReviewText}>View Full Review</Text>
+                    <AppText style={styles.viewFullReviewText}>View Full Review</AppText>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -427,23 +514,23 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             <View style={styles.ratingCard}>
               <View style={styles.ratingCardTitleRow}>
                 <Ionicons name="people" size={20} color="#007AFF" />
-                <Text style={styles.ratingCardTitle}>Community Rating</Text>
+                <AppText style={styles.ratingCardTitle}>Community Rating</AppText>
               </View>
               <View style={styles.ratingCardContent}>
                 <View style={styles.communityRatingBadge}>
-                  <Text style={styles.communityRatingNumber}>
+                  <AppText style={styles.communityRatingNumber}>
                     {communityRating.toFixed(1)}
-                  </Text>
-                  <Text style={styles.communityRatingLabel}>/10</Text>
+                  </AppText>
+                  <AppText style={styles.communityRatingLabel}>/10</AppText>
                 </View>
                 <View style={styles.ratingCardInfo}>
-                  <Text style={styles.ratingCardMessage}>
+                  <AppText style={styles.ratingCardMessage}>
                     from {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
-                  </Text>
+                  </AppText>
                   {movie.totalReviews && movie.totalReviews > reviews.length && (
-                    <Text style={styles.ratingCardSubtext}>
+                    <AppText style={styles.ratingCardSubtext}>
                       {movie.totalReviews} total reviews
-                    </Text>
+                    </AppText>
                   )}
                 </View>
               </View>
@@ -455,7 +542,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             <View style={styles.highlightCard}>
               <View style={styles.highlightHeader}>
                 <Ionicons name="trophy" size={18} color="#FFD700" />
-                <Text style={styles.highlightTitle}>Most Helpful Review</Text>
+                <AppText style={styles.highlightTitle}>Most Helpful Review</AppText>
               </View>
               <View style={styles.highlightContent}>
                 <View style={styles.highlightAuthor}>
@@ -470,30 +557,30 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     </View>
                   )}
                   <View>
-                    <Text style={styles.highlightAuthorName}>
+                    <AppText style={styles.highlightAuthorName}>
                       {topReview.userId?.username || 'Anonymous'}
-                    </Text>
+                    </AppText>
                     <View
                       style={[
                         styles.highlightRating,
                         { backgroundColor: `${getRatingColor(topReview.rating)}20` },
                       ]}
                     >
-                      <Text
+                      <AppText
                         style={[
                           styles.highlightRatingText,
                           { color: getRatingColor(topReview.rating) },
                         ]}
                       >
                         {topReview.rating}/10
-                      </Text>
+                      </AppText>
                     </View>
                   </View>
                 </View>
                 {topReview.review && (
-                  <Text style={styles.highlightText} numberOfLines={3}>
+                  <AppText style={styles.highlightText} numberOfLines={3}>
                     "{topReview.review}"
-                  </Text>
+                  </AppText>
                 )}
               </View>
             </View>
@@ -502,10 +589,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           {/* Overview - Key Information */}
           {(movie.description || movie.synopsis) && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Overview</Text>
-              <Text style={styles.sectionText}>
+              <AppText style={styles.sectionTitle}>Overview</AppText>
+              <AppText style={styles.sectionText}>
                 {movie.description || movie.synopsis || ''}
-              </Text>
+              </AppText>
             </View>
           )}
 
@@ -514,8 +601,8 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             <View style={styles.infoRow}>
               <Ionicons name="film-outline" size={18} color="#007AFF" />
               <View style={styles.infoRowContent}>
-                <Text style={styles.infoRowLabel}>Director</Text>
-                <Text style={styles.infoRowValue}>{String(movie.director || '')}</Text>
+                <AppText style={styles.infoRowLabel}>Director</AppText>
+                <AppText style={styles.infoRowValue}>{String(movie.director || '')}</AppText>
               </View>
             </View>
           )}
@@ -524,10 +611,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           {movie.cast && movie.cast.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Cast</Text>
+                <AppText style={styles.sectionTitle}>Cast</AppText>
                 {movie.cast.length > 10 && (
                   <TouchableOpacity>
-                    <Text style={styles.seeAllText}>See All</Text>
+                    <AppText style={styles.seeAllText}>See All</AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -568,13 +655,13 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           <Ionicons name="person" size={24} color="#666" />
                         </View>
                       )}
-                      <Text style={styles.castName} numberOfLines={2}>
+                      <AppText style={styles.castName} numberOfLines={2}>
                         {actorName}
-                      </Text>
+                      </AppText>
                       {character && (
-                        <Text style={styles.castCharacter} numberOfLines={1}>
+                        <AppText style={styles.castCharacter} numberOfLines={1}>
                           {character}
-                        </Text>
+                        </AppText>
                       )}
                     </TouchableOpacity>
                   );
@@ -586,7 +673,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           {/* Genres - Quick Tags */}
           {movie.genre && movie.genre.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Genres</Text>
+              <AppText style={styles.sectionTitle}>Genres</AppText>
               <View style={styles.genreContainer}>
                 {movie.genre.map((g: string, index: number) => (
                   <TouchableOpacity
@@ -594,7 +681,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     style={styles.genreTag}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.genreText}>{g}</Text>
+                    <AppText style={styles.genreText}>{g}</AppText>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -604,9 +691,9 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           {/* Reviews Section - Main Engagement */}
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
-              <Text style={styles.reviewsTitle}>
+              <AppText style={styles.reviewsTitle}>
                 Reviews {reviews.length > 0 && `(${reviews.length})`}
-              </Text>
+              </AppText>
               {reviews.length > 1 && (
                 <View style={styles.sortButtons}>
                   <TouchableOpacity
@@ -616,14 +703,14 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     ]}
                     onPress={() => setReviewSort('recent')}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.sortButtonText,
                         reviewSort === 'recent' && styles.sortButtonTextActive,
                       ]}
                     >
                       Recent
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -632,14 +719,14 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     ]}
                     onPress={() => setReviewSort('highest')}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.sortButtonText,
                         reviewSort === 'highest' && styles.sortButtonTextActive,
                       ]}
                     >
                       Highest
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -648,14 +735,14 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     ]}
                     onPress={() => setReviewSort('lowest')}
                   >
-                    <Text
+                    <AppText
                       style={[
                         styles.sortButtonText,
                         reviewSort === 'lowest' && styles.sortButtonTextActive,
                       ]}
                     >
                       Lowest
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                 </View>
               )}
@@ -666,10 +753,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             ) : reviews.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="chatbubbles-outline" size={64} color="#333" />
-                <Text style={styles.emptyStateTitle}>No Reviews Yet</Text>
-                <Text style={styles.emptyStateText}>
+                <AppText style={styles.emptyStateTitle}>No Reviews Yet</AppText>
+                <AppText style={styles.emptyStateText}>
                   Be the first to share your thoughts and help others discover this movie!
-                </Text>
+                </AppText>
                 {isAuthenticated && (
                   <TouchableOpacity
                     style={styles.emptyStateButton}
@@ -677,9 +764,9 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     activeOpacity={0.8}
                   >
                     <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
-                    <Text style={styles.emptyStateButtonText}>
+                    <AppText style={styles.emptyStateButtonText}>
                       Write the First Review
-                    </Text>
+                    </AppText>
                   </TouchableOpacity>
                 )}
               </View>
@@ -709,20 +796,20 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           </View>
                         )}
                         <View>
-                          <Text style={styles.reviewAuthor}>
+                          <AppText style={styles.reviewAuthor}>
                             {review.userId?.username || 'Anonymous'}
                             {isUserReview && (
-                              <Text style={styles.yourReviewBadge}> • You</Text>
+                              <AppText style={styles.yourReviewBadge}> • You</AppText>
                             )}
-                          </Text>
+                          </AppText>
                           {review.createdAt && (
-                            <Text style={styles.reviewDate}>
+                            <AppText style={styles.reviewDate}>
                               {new Date(review.createdAt).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 year: 'numeric',
                               })}
-                            </Text>
+                            </AppText>
                           )}
                         </View>
                       </View>
@@ -732,20 +819,20 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           { backgroundColor: `${getRatingColor(review.rating)}20` },
                         ]}
                       >
-                        <Text
+                        <AppText
                           style={[
                             styles.reviewRatingText,
                             { color: getRatingColor(review.rating) },
                           ]}
                         >
                           {review.rating}/10
-                        </Text>
+                        </AppText>
                       </View>
                     </View>
                     {review.title && (
-                      <Text style={styles.reviewTitle}>{String(review.title || '')}</Text>
+                      <AppText style={styles.reviewTitle}>{String(review.title || '')}</AppText>
                     )}
-                    <Text style={styles.reviewText}>{review.review || ''}</Text>
+                    <AppText style={styles.reviewText}>{review.review || ''}</AppText>
                   </View>
                 );
               })
@@ -765,7 +852,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           activeOpacity={0.8}
         >
           <Ionicons name="star" size={22} color="#fff" />
-          <Text style={styles.floatingButtonText}>Rate It</Text>
+          <AppText style={styles.floatingButtonText}>Rate It</AppText>
         </TouchableOpacity>
       )}
     </View>
@@ -991,6 +1078,27 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingTop: 0,
+  },
+  watchlistButton: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#333',
+  },
+  watchlistButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  watchlistButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   primaryCTA: {
     backgroundColor: '#007AFF',

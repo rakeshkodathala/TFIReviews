@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -13,6 +11,8 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { AppText, AppTextInput } from '../components/Typography';
+import { typography } from '../constants/typography';
 import { useAuth } from '../context/AuthContext';
 
 interface RegisterScreenProps {
@@ -54,11 +54,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
+          <AppText style={styles.title}>Create Account</AppText>
+          <AppText style={styles.subtitle}>Sign up to get started</AppText>
 
           <View style={styles.form}>
-            <TextInput
+            <AppTextInput
               style={styles.input}
               placeholder="Username *"
               placeholderTextColor="#999"
@@ -67,7 +67,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               autoCapitalize="none"
             />
 
-            <TextInput
+            <AppTextInput
               style={styles.input}
               placeholder="Email *"
               placeholderTextColor="#999"
@@ -78,7 +78,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               autoComplete="email"
             />
 
-            <TextInput
+            <AppTextInput
               style={styles.input}
               placeholder="Full Name (optional)"
               placeholderTextColor="#999"
@@ -86,7 +86,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               onChangeText={setName}
             />
 
-            <TextInput
+            <AppTextInput
               style={styles.input}
               placeholder="Password *"
               placeholderTextColor="#999"
@@ -104,7 +104,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign Up</Text>
+                <AppText style={styles.buttonText}>Sign Up</AppText>
               )}
             </TouchableOpacity>
 
@@ -112,9 +112,9 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
               style={styles.linkButton}
               onPress={() => navigation.navigate('Login')}
             >
-              <Text style={styles.linkText}>
-                Already have an account? <Text style={styles.linkBold}>Sign In</Text>
-              </Text>
+              <AppText style={styles.linkText}>
+                Already have an account? <AppText style={styles.linkBold}>Sign In</AppText>
+              </AppText>
             </TouchableOpacity>
           </View>
         </View>
@@ -138,13 +138,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
+    ...typography.styles.h1,
     fontSize: 32,
-    fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.styles.body,
     color: '#999',
     marginBottom: 32,
   },
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     borderColor: '#333',
     borderRadius: 8,
     paddingHorizontal: 16,
-    fontSize: 16,
+    ...typography.styles.body,
     marginBottom: 16,
     backgroundColor: '#2a2a2a',
     color: '#fff',
@@ -174,21 +174,20 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
+    ...typography.styles.button,
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   linkButton: {
     marginTop: 24,
     alignItems: 'center',
   },
   linkText: {
+    ...typography.styles.bodySmall,
     color: '#999',
-    fontSize: 14,
   },
   linkBold: {
+    ...typography.styles.buttonSmall,
     color: '#007AFF',
-    fontWeight: '600',
   },
 });
 

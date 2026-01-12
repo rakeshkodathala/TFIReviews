@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   RefreshControl,
@@ -10,6 +9,7 @@ import {
   Image,
   Animated,
 } from "react-native";
+import { AppText } from "../components/Typography";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { reviewsService } from "../services/api";
@@ -172,13 +172,13 @@ const ActivityScreen: React.FC = () => {
               {/* Movie Title and Year */}
               <View style={styles.titleRow}>
                 <View style={styles.titleContainer}>
-                  <Text style={styles.movieTitle} numberOfLines={2}>
+                  <AppText style={styles.movieTitle} numberOfLines={2}>
                     {movie.title || "Unknown Movie"}
-                  </Text>
+                  </AppText>
                   {movie.releaseDate && (
-                    <Text style={styles.movieYear}>
+                    <AppText style={styles.movieYear}>
                       ({new Date(movie.releaseDate).getFullYear()})
-                    </Text>
+                    </AppText>
                   )}
                 </View>
                 {/* Rating Badge */}
@@ -190,22 +190,22 @@ const ActivityScreen: React.FC = () => {
                 >
                   <Ionicons
                     name={ratingStyle.icon}
-                    size={10}
+                    size={8}
                     color={ratingStyle.color}
                   />
-                  <Text
+                  <AppText
                     style={[styles.ratingText, { color: ratingStyle.color }]}
                   >
                     {rating.toFixed(1)}
-                  </Text>
-                  <Text
+                  </AppText>
+                  <AppText
                     style={[
                       styles.ratingDenominator,
                       { color: ratingStyle.color },
                     ]}
                   >
                     /10
-                  </Text>
+                  </AppText>
                 </View>
               </View>
 
@@ -219,35 +219,35 @@ const ActivityScreen: React.FC = () => {
                     />
                   ) : (
                     <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>
+                      <AppText style={styles.avatarText}>
                         {(reviewer.username || "A").charAt(0).toUpperCase()}
-                      </Text>
+                      </AppText>
                     </View>
                   )}
-                  <Text style={styles.reviewerName} numberOfLines={1}>
+                  <AppText style={styles.reviewerName} numberOfLines={1}>
                     {reviewer.username || "Anonymous"}
-                  </Text>
+                  </AppText>
                 </View>
-                {timeAgo && <Text style={styles.reviewTime}>{timeAgo}</Text>}
+                {timeAgo && <AppText style={styles.reviewTime}>{timeAgo}</AppText>}
               </View>
             </View>
           </View>
 
           {/* Review Text */}
           <View style={styles.reviewTextContainer}>
-            <Text
+            <AppText
               style={styles.reviewText}
               numberOfLines={isLongReview || isMediumReview ? 3 : undefined}
             >
               {reviewText}
-            </Text>
+            </AppText>
             {(isLongReview || isMediumReview) && (
               <TouchableOpacity
                 style={styles.readMoreButton}
                 onPress={() => handleReviewPress(item)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.readMoreText}>Read full review →</Text>
+                <AppText style={styles.readMoreText}>Read full review →</AppText>
               </TouchableOpacity>
             )}
           </View>
@@ -260,7 +260,7 @@ const ActivityScreen: React.FC = () => {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading reviews...</Text>
+        <AppText style={styles.loadingText}>Loading reviews...</AppText>
       </View>
     );
   }
@@ -292,10 +292,10 @@ const ActivityScreen: React.FC = () => {
               <View style={styles.emptyIconContainer}>
                 <Ionicons name="film-outline" size={64} color="#666" />
               </View>
-              <Text style={styles.emptyTitle}>No Reviews Yet</Text>
-              <Text style={styles.emptyText}>
+              <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
+              <AppText style={styles.emptyText}>
                 Start reviewing movies to see them appear here!
-              </Text>
+              </AppText>
               <TouchableOpacity
                 style={styles.browseButton}
                 onPress={() => {
@@ -304,7 +304,7 @@ const ActivityScreen: React.FC = () => {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.browseButtonText}>Browse Movies</Text>
+                <AppText style={styles.browseButtonText}>Browse Movies</AppText>
               </TouchableOpacity>
             </View>
           ) : null
@@ -390,17 +390,17 @@ const styles = StyleSheet.create({
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 0,
+    borderRadius: 8,
+    gap: 2,
   },
   ratingText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "700",
   },
   ratingDenominator: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "600",
     opacity: 0.9,
   },

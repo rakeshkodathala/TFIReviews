@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Switch } from "react-native";
+import { View, StyleSheet, ScrollView, Switch } from "react-native";
+import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
 
 const NotificationsScreen: React.FC = () => {
@@ -13,7 +14,9 @@ const NotificationsScreen: React.FC = () => {
       <View style={styles.content}>
         {/* Notification Preferences */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification Preferences</Text>
+          <AppText style={styles.sectionTitle}>
+            Notification Preferences
+          </AppText>
           <View style={styles.listContainer}>
             <View style={[styles.listItem, styles.listItemFirst]}>
               <View style={styles.listItemLeft}>
@@ -25,10 +28,10 @@ const NotificationsScreen: React.FC = () => {
                   />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>Review Updates</Text>
-                  <Text style={styles.listItemSubtext}>
+                  <AppText style={styles.listItemLabel}>Review Updates</AppText>
+                  <AppText style={styles.listItemSubtext}>
                     Get notified when someone comments on your reviews
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Switch
@@ -45,10 +48,10 @@ const NotificationsScreen: React.FC = () => {
                   <Ionicons name="film-outline" size={18} color="#007AFF" />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>New Movies</Text>
-                  <Text style={styles.listItemSubtext}>
+                  <AppText style={styles.listItemLabel}>New Movies</AppText>
+                  <AppText style={styles.listItemSubtext}>
                     Notifications about new movie releases
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Switch
@@ -65,10 +68,12 @@ const NotificationsScreen: React.FC = () => {
                   <Ionicons name="bookmark-outline" size={18} color="#007AFF" />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>Watchlist Updates</Text>
-                  <Text style={styles.listItemSubtext}>
+                  <AppText style={styles.listItemLabel}>
+                    Watchlist Updates
+                  </AppText>
+                  <AppText style={styles.listItemSubtext}>
                     When movies in your watchlist are available
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Switch
@@ -85,10 +90,10 @@ const NotificationsScreen: React.FC = () => {
                   <Ionicons name="mail-outline" size={18} color="#007AFF" />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>Weekly Digest</Text>
-                  <Text style={styles.listItemSubtext}>
+                  <AppText style={styles.listItemLabel}>Weekly Digest</AppText>
+                  <AppText style={styles.listItemSubtext}>
                     Weekly summary of your activity
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Switch
@@ -103,10 +108,10 @@ const NotificationsScreen: React.FC = () => {
 
         <View style={styles.infoSection}>
           <Ionicons name="information-circle-outline" size={20} color="#999" />
-          <Text style={styles.infoText}>
+          <AppText style={styles.infoText}>
             Notification preferences are saved automatically. You can change
             these settings at any time.
-          </Text>
+          </AppText>
         </View>
       </View>
     </ScrollView>

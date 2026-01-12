@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Switch,
   Alert,
 } from "react-native";
+import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
 
 const SettingsScreen: React.FC = () => {
@@ -20,7 +20,7 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.content}>
         {/* Display Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Display</Text>
+          <AppText style={styles.sectionTitle}>Display</AppText>
           <View style={styles.listContainer}>
             <View style={[styles.listItem, styles.listItemFirst]}>
               <View style={styles.listItemLeft}>
@@ -28,8 +28,8 @@ const SettingsScreen: React.FC = () => {
                   <Ionicons name="moon-outline" size={18} color="#007AFF" />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>Dark Mode</Text>
-                  <Text style={styles.listItemValue}>Always on</Text>
+                  <AppText style={styles.listItemLabel}>Dark Mode</AppText>
+                  <AppText style={styles.listItemValue}>Always on</AppText>
                 </View>
               </View>
             </View>
@@ -38,7 +38,7 @@ const SettingsScreen: React.FC = () => {
 
         {/* Content Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Content</Text>
+          <AppText style={styles.sectionTitle}>Content</AppText>
           <View style={styles.listContainer}>
             <View style={[styles.listItem, styles.listItemFirst]}>
               <View style={styles.listItemLeft}>
@@ -46,10 +46,10 @@ const SettingsScreen: React.FC = () => {
                   <Ionicons name="play-outline" size={18} color="#007AFF" />
                 </View>
                 <View style={styles.listItemContent}>
-                  <Text style={styles.listItemLabel}>Auto-play Trailers</Text>
-                  <Text style={styles.listItemSubtext}>
+                  <AppText style={styles.listItemLabel}>Auto-play Trailers</AppText>
+                  <AppText style={styles.listItemSubtext}>
                     Automatically play video previews
-                  </Text>
+                  </AppText>
                 </View>
               </View>
               <Switch
@@ -64,7 +64,7 @@ const SettingsScreen: React.FC = () => {
 
         {/* Data Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data & Storage</Text>
+          <AppText style={styles.sectionTitle}>Data & Storage</AppText>
           <View style={styles.listContainer}>
             <TouchableOpacity
               style={[styles.listItem, styles.listItemFirst]}
@@ -90,7 +90,7 @@ const SettingsScreen: React.FC = () => {
                 <View style={styles.listIconContainer}>
                   <Ionicons name="trash-outline" size={18} color="#007AFF" />
                 </View>
-                <Text style={styles.listItemValue}>Clear Cache</Text>
+                <AppText style={styles.listItemValue}>Clear Cache</AppText>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#666" />
             </TouchableOpacity>
@@ -99,7 +99,7 @@ const SettingsScreen: React.FC = () => {
 
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
+          <AppText style={styles.sectionTitle}>About</AppText>
           <View style={styles.listContainer}>
             <TouchableOpacity
               style={[styles.listItem, styles.listItemFirst]}
@@ -116,9 +116,9 @@ const SettingsScreen: React.FC = () => {
                     color="#007AFF"
                   />
                 </View>
-                <Text style={styles.listItemValue}>App Version</Text>
+                <AppText style={styles.listItemValue}>App Version</AppText>
               </View>
-              <Text style={styles.versionText}>1.0.0</Text>
+              <AppText style={styles.versionText}>1.0.0</AppText>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,17 +1,18 @@
 import React, { useState, useCallback } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  Alert,
 } from "react-native";
+import { AppText } from "../components/Typography";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { authService } from "../services/api";
+import { authService, reviewsService } from "../services/api";
 import { AccountStackParamList } from "../navigation/AppNavigator";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -66,51 +67,107 @@ const MyReviewsScreen: React.FC = () => {
     loadReviews();
   }, [loadReviews]);
 
+  const handleEdit = (review: any) => {
+    const movie = review.movieId || {};
+    if (movie._id || movie.tmdbId) {
+      navigation.navigate("CreateReview", { movie, review });
+    }
+  };
+
+  const handleDelete = (review: any) => {
+    const movie = review.movieId || {};
+    const movieTitle = movie.title || "this movie";
+    
+    Alert.alert(
+      "Delete Review",
+      `Are you sure you want to delete your review for "${movieTitle}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await reviewsService.delete(review._id || review.id);
+              loadReviews();
+              Alert.alert("Success", "Review deleted successfully");
+            } catch (error: any) {
+              console.error("Error deleting review:", error);
+              Alert.alert(
+                "Error",
+                error.response?.data?.error || "Failed to delete review"
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderReview = ({ item }: { item: any }) => {
     const rating = item.rating || 0;
     const ratingColor = getRatingColor(rating);
     const movie = item.movieId || {};
 
     return (
-      <TouchableOpacity
-        style={styles.reviewCard}
-        activeOpacity={0.7}
-        onPress={() => {
-          if (movie._id || movie.tmdbId) {
-            navigation.navigate("MovieDetails", { movie });
-          }
-        }}
-      >
-        <View style={styles.reviewHeader}>
-          {movie.posterUrl ? (
-            <Image
-              source={{ uri: movie.posterUrl }}
-              style={styles.poster}
-            />
-          ) : (
-            <View style={[styles.poster, styles.posterPlaceholder]}>
-              <Ionicons name="film-outline" size={24} color="#666" />
-            </View>
-          )}
-          <View style={styles.reviewInfo}>
-            <Text style={styles.movieTitle} numberOfLines={2}>
-              {movie.title || "Unknown Movie"}
-            </Text>
-            <Text style={styles.reviewDate}>
-              {formatDate(item.createdAt || item.updatedAt)}
-            </Text>
-            <View style={[styles.ratingBadge, { backgroundColor: ratingColor }]}>
-              <Ionicons name="star" size={14} color="#fff" />
-              <Text style={styles.ratingText}>{rating}/10</Text>
+      <View style={styles.reviewCard}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            if (movie._id || movie.tmdbId) {
+              navigation.navigate("MovieDetails", { movie });
+            }
+          }}
+        >
+          <View style={styles.reviewHeader}>
+            {movie.posterUrl ? (
+              <Image
+                source={{ uri: movie.posterUrl }}
+                style={styles.poster}
+              />
+            ) : (
+              <View style={[styles.poster, styles.posterPlaceholder]}>
+                <Ionicons name="film-outline" size={24} color="#666" />
+              </View>
+            )}
+            <View style={styles.reviewInfo}>
+              <AppText style={styles.movieTitle} numberOfLines={2}>
+                {movie.title || "Unknown Movie"}
+              </AppText>
+              <AppText style={styles.reviewDate}>
+                {formatDate(item.createdAt || item.updatedAt)}
+              </AppText>
+              <View style={[styles.ratingBadge, { backgroundColor: ratingColor }]}>
+                <Ionicons name="star" size={10} color="#fff" />
+                <AppText style={styles.ratingText}>{rating}/10</AppText>
+              </View>
             </View>
           </View>
+          {item.review && (
+            <AppText style={styles.reviewText} numberOfLines={3}>
+              {item.review}
+            </AppText>
+          )}
+        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEdit(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="pencil" size={16} color="#007AFF" />
+            <AppText style={styles.editButtonText}>Edit</AppText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDelete(item)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={16} color="#EF5350" />
+            <AppText style={styles.deleteButtonText}>Delete</AppText>
+          </TouchableOpacity>
         </View>
-        {item.review && (
-          <Text style={styles.reviewText} numberOfLines={3}>
-            {item.review}
-          </Text>
-        )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -145,10 +202,10 @@ const MyReviewsScreen: React.FC = () => {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="document-text-outline" size={64} color="#666" />
             </View>
-            <Text style={styles.emptyTitle}>No Reviews Yet</Text>
-            <Text style={styles.emptyText}>
+            <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
+            <AppText style={styles.emptyText}>
               Start reviewing movies to see them appear here!
-            </Text>
+            </AppText>
           </View>
         }
       />
@@ -215,13 +272,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 0,
+    borderRadius: 8,
+    gap: 2,
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "700",
     color: "#fff",
   },
@@ -229,6 +286,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#ccc",
     lineHeight: 20,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    gap: 6,
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(239, 83, 80, 0.1)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EF5350",
+    gap: 6,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#EF5350",
   },
   emptyContainer: {
     flex: 1,

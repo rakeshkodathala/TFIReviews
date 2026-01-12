@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   ScrollView,
   StyleSheet,
   Image,
@@ -11,6 +10,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import { AppText } from '../components/Typography';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { movieSearchService } from '../services/api';
@@ -63,7 +63,7 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="person-outline" size={64} color="#666" />
-        <Text style={styles.errorText}>Person not found</Text>
+        <AppText style={styles.errorText}>Person not found</AppText>
       </View>
     );
   }
@@ -100,12 +100,12 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
           )}
           
           <View style={styles.heroInfo}>
-            <Text style={styles.name}>{person.name || personName}</Text>
+            <AppText style={styles.name}>{person.name || personName}</AppText>
             
             {person.knownForDepartment && (
               <View style={styles.departmentBadge}>
                 <Ionicons name="film-outline" size={16} color="#007AFF" />
-                <Text style={styles.departmentText}>{person.knownForDepartment}</Text>
+                <AppText style={styles.departmentText}>{person.knownForDepartment}</AppText>
               </View>
             )}
           </View>
@@ -115,8 +115,8 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
         {/* Biography */}
         {person.biography && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Biography</Text>
-            <Text style={styles.biographyText}>{person.biography}</Text>
+            <AppText style={styles.sectionTitle}>Biography</AppText>
+            <AppText style={styles.biographyText}>{person.biography}</AppText>
           </View>
         )}
 
@@ -126,8 +126,8 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color="#007AFF" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Birthday</Text>
-                <Text style={styles.infoValue}>{formatDate(person.birthday)}</Text>
+                <AppText style={styles.infoLabel}>Birthday</AppText>
+                <AppText style={styles.infoValue}>{formatDate(person.birthday)}</AppText>
               </View>
             </View>
           )}
@@ -136,8 +136,8 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
             <View style={styles.infoRow}>
               <Ionicons name="location-outline" size={20} color="#007AFF" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Place of Birth</Text>
-                <Text style={styles.infoValue}>{person.placeOfBirth}</Text>
+                <AppText style={styles.infoLabel}>Place of Birth</AppText>
+                <AppText style={styles.infoValue}>{person.placeOfBirth}</AppText>
               </View>
             </View>
           )}
@@ -146,7 +146,7 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
         {/* Known For Movies */}
         {person.movies && person.movies.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Known For</Text>
+            <AppText style={styles.sectionTitle}>Known For</AppText>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -179,18 +179,18 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
                       <Ionicons name="film-outline" size={32} color="#666" />
                     </View>
                   )}
-                  <Text style={styles.movieTitle} numberOfLines={2}>
+                  <AppText style={styles.movieTitle} numberOfLines={2}>
                     {movie.title}
-                  </Text>
+                  </AppText>
                   {movie.character && (
-                    <Text style={styles.movieCharacter} numberOfLines={1}>
+                    <AppText style={styles.movieCharacter} numberOfLines={1}>
                       as {movie.character}
-                    </Text>
+                    </AppText>
                   )}
                   {movie.releaseDate && (
-                    <Text style={styles.movieYear}>
+                    <AppText style={styles.movieYear}>
                       {new Date(movie.releaseDate).getFullYear()}
-                    </Text>
+                    </AppText>
                   )}
                 </TouchableOpacity>
               ))}
@@ -201,7 +201,7 @@ const CastDetailsScreen: React.FC<CastDetailsScreenProps> = ({ navigation, route
         {/* Photo Gallery */}
         {person.images && person.images.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Photos</Text>
+            <AppText style={styles.sectionTitle}>Photos</AppText>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

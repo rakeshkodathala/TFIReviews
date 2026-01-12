@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   FlatList,
@@ -14,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
 } from "react-native";
+import { AppText, AppTextInput } from "../components/Typography";
 import { movieSearchService, moviesService } from "../services/api";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -23,10 +22,15 @@ import { Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const NUM_COLUMNS = 3;
-const CARD_MARGIN = 4;
-const LIST_PADDING = 6;
+const CARD_MARGIN = 2;
+const LIST_PADDING = 4;
+const SECTION_PADDING = 16; // Padding used in section style
 const CARD_WIDTH =
   (SCREEN_WIDTH - LIST_PADDING * 2 - CARD_MARGIN * (NUM_COLUMNS * 2)) /
+  NUM_COLUMNS;
+// Card width for Popular Movies section (accounts for section padding)
+const POPULAR_CARD_WIDTH =
+  (SCREEN_WIDTH - SECTION_PADDING * 2 - CARD_MARGIN * (NUM_COLUMNS * 2)) /
   NUM_COLUMNS;
 
 interface Movie {
@@ -90,7 +94,11 @@ const SearchScreen: React.FC = () => {
   );
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
-  const searchInputRef = useRef<TextInput>(null);
+  const [sortBy, setSortBy] = useState<
+    "relevance" | "rating" | "date" | "popularity"
+  >("relevance");
+  const [showSortOptions, setShowSortOptions] = useState(false);
+  const searchInputRef = useRef<any>(null);
   const borderColorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -296,7 +304,10 @@ const SearchScreen: React.FC = () => {
         }
 
         console.log(`Found ${filteredMovies.length} movies`);
-        setMovies(filteredMovies);
+
+        // Apply sorting
+        const sortedMovies = sortMovies(filteredMovies, sortBy);
+        setMovies(sortedMovies);
         setLoading(false);
         return;
       }
@@ -357,7 +368,10 @@ const SearchScreen: React.FC = () => {
           console.log(
             `Setting ${finalMovies.length} movies for genre ${activeGenre}`
           );
-          setMovies(finalMovies);
+
+          // Apply sorting
+          const sortedMovies = sortMovies(finalMovies, sortBy);
+          setMovies(sortedMovies);
           setLoading(false);
           return;
         } else {
@@ -381,6 +395,36 @@ const SearchScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const sortMovies = (movies: Movie[], sortType: string): Movie[] => {
+    const sorted = [...movies];
+    switch (sortType) {
+      case "rating":
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case "date":
+        return sorted.sort((a, b) => {
+          const dateA = new Date(a.releaseDate || 0).getTime();
+          const dateB = new Date(b.releaseDate || 0).getTime();
+          return dateB - dateA; // Newest first
+        });
+      case "popularity":
+        // Sort by rating as popularity proxy (higher rated = more popular)
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case "relevance":
+      default:
+        return sorted; // Keep original order (relevance from API)
+    }
+  };
+
+  const handleSortChange = (
+    newSort: "relevance" | "rating" | "date" | "popularity"
+  ) => {
+    setSortBy(newSort);
+    setShowSortOptions(false);
+    // Re-sort current movies
+    const sortedMovies = sortMovies(movies, newSort);
+    setMovies(sortedMovies);
   };
 
   const handleGenreSelect = async (genre: string | null) => {
@@ -462,7 +506,7 @@ const SearchScreen: React.FC = () => {
     return null;
   };
 
-  const renderMovie = ({ item }: { item: Movie }) => {
+  const renderMovie = ({ item, cardWidth = CARD_WIDTH }: { item: Movie; cardWidth?: number }) => {
     const rating = item.rating || 0;
     const ratingColor = getRatingColor(rating);
     const year = item.releaseDate
@@ -472,7 +516,7 @@ const SearchScreen: React.FC = () => {
 
     return (
       <TouchableOpacity
-        style={[styles.movieCard, { width: CARD_WIDTH }]}
+        style={[styles.movieCard, { width: cardWidth }]}
         onPress={() => {
           navigation.navigate("MovieDetails", { movie: item });
         }}
@@ -489,23 +533,23 @@ const SearchScreen: React.FC = () => {
           {badge && (
             <View style={[styles.movieBadge, { backgroundColor: badge.color }]}>
               <Ionicons name={badge.icon as any} size={10} color="#fff" />
-              <Text style={styles.movieBadgeText}>{badge.label}</Text>
+              <AppText style={styles.movieBadgeText}>{badge.label}</AppText>
             </View>
           )}
         </View>
         <View style={styles.movieInfo}>
-          <Text style={styles.movieTitle} numberOfLines={2}>
+          <AppText style={styles.movieTitle} numberOfLines={2}>
             {item.title || "Untitled"}
-          </Text>
+          </AppText>
           <View style={styles.movieMeta}>
-            {year && <Text style={styles.movieDate}>{year}</Text>}
+            {year && <AppText style={styles.movieDate}>{year}</AppText>}
             {rating > 0 && (
               <View
                 style={[styles.ratingBadge, { backgroundColor: ratingColor }]}
               >
-                <Ionicons name="star" size={10} color="#fff" />
-                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-                <Text style={styles.ratingDenominator}>/10</Text>
+                <Ionicons name="star" size={8} color="#fff" />
+                <AppText style={styles.ratingText}>{rating.toFixed(1)}</AppText>
+                <AppText style={styles.ratingDenominator}>/10</AppText>
               </View>
             )}
           </View>
@@ -520,13 +564,13 @@ const SearchScreen: React.FC = () => {
       style={styles.recentSearchItem}
       onPress={() => handleRecentSearchPress(query)}
     >
-      <Text style={styles.recentSearchText}>{query}</Text>
+      <AppText style={styles.recentSearchText}>{query}</AppText>
     </TouchableOpacity>
   );
 
   const renderGenreFilter = () => (
     <View style={styles.genreFilterContainer}>
-      <Text style={styles.genreFilterTitle}>Browse by Genre</Text>
+      <AppText style={styles.genreFilterTitle}>Browse by Genre</AppText>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -539,14 +583,14 @@ const SearchScreen: React.FC = () => {
           ]}
           onPress={() => handleGenreSelect(null)}
         >
-          <Text
+          <AppText
             style={[
               styles.genreChipText,
               selectedGenre === null && styles.genreChipTextActive,
             ]}
           >
             All
-          </Text>
+          </AppText>
         </TouchableOpacity>
         {GENRES.map((genre) => (
           <TouchableOpacity
@@ -557,14 +601,14 @@ const SearchScreen: React.FC = () => {
             ]}
             onPress={() => handleGenreSelect(genre)}
           >
-            <Text
+            <AppText
               style={[
                 styles.genreChipText,
                 selectedGenre === genre && styles.genreChipTextActive,
               ]}
             >
               {genre}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -584,8 +628,9 @@ const SearchScreen: React.FC = () => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+    <View style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
         <View style={styles.searchContainer}>
           <Animated.View
             style={[
@@ -609,7 +654,7 @@ const SearchScreen: React.FC = () => {
                 color={isFocused ? "#007AFF" : "#666"}
               />
             </View>
-            <TextInput
+            <AppTextInput
               ref={searchInputRef}
               style={styles.searchInput}
               placeholder={PLACEHOLDER_MESSAGES[currentPlaceholder]}
@@ -657,6 +702,123 @@ const SearchScreen: React.FC = () => {
 
         {renderGenreFilter()}
 
+        {/* Sort Options - Only show when there are search results */}
+        {showSearchResults && movies.length > 0 && (
+          <View style={styles.sortContainer}>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => setShowSortOptions(!showSortOptions)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="swap-vertical-outline"
+                size={18}
+                color="#007AFF"
+              />
+              <AppText style={styles.sortButtonText}>
+                Sort:{" "}
+                {sortBy === "relevance"
+                  ? "Relevance"
+                  : sortBy === "rating"
+                  ? "Rating"
+                  : sortBy === "date"
+                  ? "Release Date"
+                  : "Popularity"}
+              </AppText>
+              <Ionicons
+                name={showSortOptions ? "chevron-up" : "chevron-down"}
+                size={18}
+                color="#007AFF"
+              />
+            </TouchableOpacity>
+
+            {showSortOptions && (
+              <View style={styles.sortOptionsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.sortOption,
+                    sortBy === "relevance" && styles.sortOptionActive,
+                  ]}
+                  onPress={() => handleSortChange("relevance")}
+                  activeOpacity={0.7}
+                >
+                  <AppText
+                    style={[
+                      styles.sortOptionText,
+                      sortBy === "relevance" && styles.sortOptionTextActive,
+                    ]}
+                  >
+                    Relevance
+                  </AppText>
+                  {sortBy === "relevance" && (
+                    <Ionicons name="checkmark" size={18} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sortOption,
+                    sortBy === "rating" && styles.sortOptionActive,
+                  ]}
+                  onPress={() => handleSortChange("rating")}
+                  activeOpacity={0.7}
+                >
+                  <AppText
+                    style={[
+                      styles.sortOptionText,
+                      sortBy === "rating" && styles.sortOptionTextActive,
+                    ]}
+                  >
+                    Rating (High to Low)
+                  </AppText>
+                  {sortBy === "rating" && (
+                    <Ionicons name="checkmark" size={18} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sortOption,
+                    sortBy === "date" && styles.sortOptionActive,
+                  ]}
+                  onPress={() => handleSortChange("date")}
+                  activeOpacity={0.7}
+                >
+                  <AppText
+                    style={[
+                      styles.sortOptionText,
+                      sortBy === "date" && styles.sortOptionTextActive,
+                    ]}
+                  >
+                    Release Date (Newest)
+                  </AppText>
+                  {sortBy === "date" && (
+                    <Ionicons name="checkmark" size={18} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sortOption,
+                    sortBy === "popularity" && styles.sortOptionActive,
+                  ]}
+                  onPress={() => handleSortChange("popularity")}
+                  activeOpacity={0.7}
+                >
+                  <AppText
+                    style={[
+                      styles.sortOptionText,
+                      sortBy === "popularity" && styles.sortOptionTextActive,
+                    ]}
+                  >
+                    Popularity
+                  </AppText>
+                  {sortBy === "popularity" && (
+                    <Ionicons name="checkmark" size={18} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
@@ -667,27 +829,27 @@ const SearchScreen: React.FC = () => {
               <View style={styles.emptyIconContainer}>
                 <Ionicons name="search-outline" size={60} color="#666" />
               </View>
-              <Text style={styles.emptyTitle}>
+              <AppText style={styles.emptyTitle}>
                 {selectedGenre
                   ? `No ${selectedGenre} movies found`
                   : "Hmm, we couldn't find that"}
-              </Text>
-              <Text style={styles.emptySubtext}>
+              </AppText>
+              <AppText style={styles.emptySubtext}>
                 {selectedGenre
                   ? "Try selecting a different genre or search for a specific movie"
                   : "Try:"}
-              </Text>
+              </AppText>
               {!selectedGenre && (
                 <View style={styles.emptySuggestions}>
-                  <Text style={styles.emptySuggestionText}>
+                  <AppText style={styles.emptySuggestionText}>
                     • Check spelling
-                  </Text>
-                  <Text style={styles.emptySuggestionText}>
+                  </AppText>
+                  <AppText style={styles.emptySuggestionText}>
                     • Search by genre instead
-                  </Text>
-                  <Text style={styles.emptySuggestionText}>
+                  </AppText>
+                  <AppText style={styles.emptySuggestionText}>
                     • Browse popular movies
-                  </Text>
+                  </AppText>
                 </View>
               )}
               {!selectedGenre && (
@@ -708,7 +870,9 @@ const SearchScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <Ionicons name="sparkles" size={16} color="#fff" />
-                  <Text style={styles.surpriseButtonText}>Surprise me</Text>
+                  <AppText style={styles.surpriseButtonText}>
+                    Surprise me
+                  </AppText>
                 </TouchableOpacity>
               )}
             </View>
@@ -737,7 +901,7 @@ const SearchScreen: React.FC = () => {
             {showRecentSearches && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Recent Searches</Text>
+                  <AppText style={styles.sectionTitle}>Recent Searches</AppText>
                   <View style={styles.sectionHeaderRight}>
                     {recentSearches.length > 4 && (
                       <TouchableOpacity
@@ -746,13 +910,13 @@ const SearchScreen: React.FC = () => {
                         }
                         style={styles.seeAllButton}
                       >
-                        <Text style={styles.seeAllText}>
+                        <AppText style={styles.seeAllText}>
                           {showAllRecentSearches ? "Show Less" : "See All"}
-                        </Text>
+                        </AppText>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={clearRecentSearches}>
-                      <Text style={styles.clearAllText}>Clear</Text>
+                      <AppText style={styles.clearAllText}>Clear</AppText>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -772,49 +936,49 @@ const SearchScreen: React.FC = () => {
             {showPopularMovies && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Popular Movies</Text>
+                  <AppText style={styles.sectionTitle}>Popular Movies</AppText>
                   {popularMovies.length > 0 && (
-                    <Text style={styles.sectionSubtitle}>
+                    <AppText style={styles.sectionSubtitle}>
                       {popularMovies.length} movies
-                    </Text>
+                    </AppText>
                   )}
                 </View>
                 {loadingPopular ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="small" color="#007AFF" />
-                    <Text style={styles.loadingText}>
+                    <AppText style={styles.loadingText}>
                       Finding great movies...
-                    </Text>
+                    </AppText>
                   </View>
                 ) : popularMovies.length > 0 ? (
-                  <FlatList
-                    data={popularMovies}
-                    renderItem={renderMovie}
-                    keyExtractor={(item) => {
+                  <View style={styles.popularMoviesGrid}>
+                    {popularMovies.map((item, index) => {
                       const key =
                         item.tmdbId?.toString() ||
                         item._id ||
-                        item.id?.toString();
-                      return key ? String(key) : Math.random().toString();
-                    }}
-                    numColumns={3}
-                    scrollEnabled={false}
-                    contentContainerStyle={styles.list}
-                    keyboardShouldPersistTaps="handled"
-                  />
+                        item.id?.toString() ||
+                        `popular-${index}`;
+                      return (
+                        <View key={key}>
+                          {renderMovie({ item, cardWidth: POPULAR_CARD_WIDTH })}
+                        </View>
+                      );
+                    })}
+                  </View>
                 ) : (
                   <View style={styles.emptyPopularContainer}>
-                    <Text style={styles.emptyPopularText}>
+                    <AppText style={styles.emptyPopularText}>
                       No popular movies available at the moment
-                    </Text>
+                    </AppText>
                   </View>
                 )}
               </View>
             )}
           </ScrollView>
         )}
-      </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </View>
   );
 };
 
@@ -958,6 +1122,12 @@ const styles = StyleSheet.create({
     padding: LIST_PADDING,
     paddingBottom: 24,
   },
+  popularMoviesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 0,
+    paddingBottom: 24,
+  },
   movieCard: {
     margin: CARD_MARGIN,
     borderRadius: 12,
@@ -975,7 +1145,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 2 / 3,
+    aspectRatio: 0.55,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
@@ -1007,41 +1177,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   movieInfo: {
-    padding: 6,
+    padding: 4,
   },
   movieTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 2,
     color: "#fff",
-    lineHeight: 16,
+    lineHeight: 14,
   },
   movieMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     flexWrap: "wrap",
   },
   movieDate: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "500",
     color: "#999",
   },
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    gap: 2,
+    paddingHorizontal: 3,
+    paddingVertical: 0,
+    borderRadius: 6,
+    gap: 1,
   },
   ratingText: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: "700",
     color: "#fff",
   },
   ratingDenominator: {
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: "600",
     color: "#fff",
     opacity: 0.9,
@@ -1149,6 +1319,59 @@ const styles = StyleSheet.create({
   },
   genreChipTextActive: {
     color: "#fff",
+    fontWeight: "600",
+  },
+  sortContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#1a1a1a",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  sortButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+  sortOptionsContainer: {
+    marginTop: 8,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+    overflow: "hidden",
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  sortOptionActive: {
+    backgroundColor: "rgba(0, 122, 255, 0.1)",
+  },
+  sortOptionText: {
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "500",
+  },
+  sortOptionTextActive: {
+    color: "#007AFF",
     fontWeight: "600",
   },
 });
