@@ -4,9 +4,7 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
-  Image,
   Alert,
 } from "react-native";
 import { AppText } from "../components/Typography";
@@ -15,6 +13,10 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { authService, reviewsService } from "../services/api";
 import { AccountStackParamList } from "../navigation/AppNavigator";
 import { Ionicons } from "@expo/vector-icons";
+import OptimizedImage from "../components/OptimizedImage";
+import SkeletonLoader from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 
 type MyReviewsScreenNavigationProp = NativeStackNavigationProp<
   AccountStackParamList,
@@ -26,6 +28,7 @@ const MyReviewsScreen: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -47,8 +50,10 @@ const MyReviewsScreen: React.FC = () => {
       setLoading(true);
       const response = await authService.getMyReviews(100);
       setReviews(response.reviews || []);
+      setError(null);
     } catch (error: any) {
       console.error("Error loading reviews:", error);
+      setError("Failed to load your reviews. Please try again.");
       setReviews([]);
     } finally {
       setLoading(false);
@@ -77,7 +82,7 @@ const MyReviewsScreen: React.FC = () => {
   const handleDelete = (review: any) => {
     const movie = review.movieId || {};
     const movieTitle = movie.title || "this movie";
-    
+
     Alert.alert(
       "Delete Review",
       `Are you sure you want to delete your review for "${movieTitle}"?`,
@@ -120,16 +125,11 @@ const MyReviewsScreen: React.FC = () => {
           }}
         >
           <View style={styles.reviewHeader}>
-            {movie.posterUrl ? (
-              <Image
-                source={{ uri: movie.posterUrl }}
-                style={styles.poster}
-              />
-            ) : (
-              <View style={[styles.poster, styles.posterPlaceholder]}>
-                <Ionicons name="film-outline" size={24} color="#666" />
-              </View>
-            )}
+            <OptimizedImage
+              uri={movie.posterUrl}
+              style={styles.poster}
+              placeholderColor="#333"
+            />
             <View style={styles.reviewInfo}>
               <AppText style={styles.movieTitle} numberOfLines={2}>
                 {movie.title || "Unknown Movie"}
@@ -137,7 +137,9 @@ const MyReviewsScreen: React.FC = () => {
               <AppText style={styles.reviewDate}>
                 {formatDate(item.createdAt || item.updatedAt)}
               </AppText>
-              <View style={[styles.ratingBadge, { backgroundColor: ratingColor }]}>
+              <View
+                style={[styles.ratingBadge, { backgroundColor: ratingColor }]}
+              >
                 <Ionicons name="star" size={10} color="#fff" />
                 <AppText style={styles.ratingText}>{rating}/10</AppText>
               </View>
@@ -171,44 +173,74 @@ const MyReviewsScreen: React.FC = () => {
     );
   };
 
-  if (loading && reviews.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlatList
-        data={reviews}
-        renderItem={renderReview}
-        keyExtractor={(item) => item._id || item.id || Math.random().toString()}
-        contentContainerStyle={
-          reviews.length === 0 ? styles.listEmpty : styles.list
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#007AFF"
-            colors={["#007AFF"]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="document-text-outline" size={64} color="#666" />
+      <OfflineBanner />
+      {loading && reviews.length === 0 ? (
+        <View style={styles.list}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <View key={index} style={styles.reviewCard}>
+              <View style={styles.reviewHeader}>
+                <SkeletonLoader width={80} height={120} borderRadius={8} />
+                <View style={styles.reviewInfo}>
+                  <SkeletonLoader
+                    width="80%"
+                    height={16}
+                    borderRadius={4}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <SkeletonLoader
+                    width="60%"
+                    height={12}
+                    borderRadius={4}
+                    style={{ marginBottom: 12 }}
+                  />
+                  <SkeletonLoader width="50%" height={24} borderRadius={4} />
+                </View>
+              </View>
+              <SkeletonLoader
+                width="100%"
+                height={60}
+                borderRadius={4}
+                style={{ marginTop: 10 }}
+              />
             </View>
-            <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
-            <AppText style={styles.emptyText}>
-              Start reviewing movies to see them appear here!
-            </AppText>
-          </View>
-        }
-      />
+          ))}
+        </View>
+      ) : error && reviews.length === 0 ? (
+        <ErrorView message={error} onRetry={loadReviews} />
+      ) : (
+        <FlatList
+          data={reviews}
+          renderItem={renderReview}
+          keyExtractor={(item) =>
+            item._id || item.id || Math.random().toString()
+          }
+          contentContainerStyle={
+            reviews.length === 0 ? styles.listEmpty : styles.list
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#007AFF"
+              colors={["#007AFF"]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="document-text-outline" size={64} color="#666" />
+              </View>
+              <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
+              <AppText style={styles.emptyText}>
+                Start reviewing movies to see them appear here!
+              </AppText>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 };
@@ -246,7 +278,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: 60,
-    height: 90,
+    height: 77,
     borderRadius: 8,
     backgroundColor: "#333",
   },
@@ -258,10 +290,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   movieTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 2,
     color: "#fff",
-    marginBottom: 4,
+    lineHeight: 14,
   },
   reviewDate: {
     fontSize: 12,

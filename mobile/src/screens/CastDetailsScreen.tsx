@@ -370,10 +370,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   movieTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
     color: '#fff',
-    marginBottom: 4,
+    lineHeight: 14,
   },
   movieCharacter: {
     fontSize: 12,

@@ -4,10 +4,9 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
-  Image,
   Alert,
+  Dimensions,
 } from "react-native";
 import { AppText } from "../components/Typography";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -15,7 +14,10 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { watchlistService } from "../services/api";
 import { AccountStackParamList } from "../navigation/AppNavigator";
 import { Ionicons } from "@expo/vector-icons";
-import { Dimensions } from "react-native";
+import OptimizedImage from "../components/OptimizedImage";
+import { MovieCardSkeleton } from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const NUM_COLUMNS = 3;
@@ -35,14 +37,17 @@ const WatchlistScreen: React.FC = () => {
   const [watchlist, setWatchlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadWatchlist = useCallback(async () => {
     try {
       setLoading(true);
       const response = await watchlistService.getAll({ limit: 100 });
       setWatchlist(response.watchlist || response || []);
+      setError(null);
     } catch (error: any) {
       console.error("Error loading watchlist:", error);
+      setError("Failed to load your watchlist. Please try again.");
       setWatchlist([]);
     } finally {
       setLoading(false);
@@ -108,13 +113,11 @@ const WatchlistScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         <View style={styles.posterContainer}>
-          {movie.posterUrl ? (
-            <Image source={{ uri: movie.posterUrl }} style={styles.poster} />
-          ) : (
-            <View style={[styles.poster, styles.posterPlaceholder]}>
-              <Ionicons name="film-outline" size={24} color="#666" />
-            </View>
-          )}
+          <OptimizedImage
+            uri={movie.posterUrl}
+            style={styles.poster}
+            placeholderColor="#333"
+          />
           <TouchableOpacity
             style={styles.removeButton}
             onPress={() => handleRemove(item)}
@@ -143,17 +146,19 @@ const WatchlistScreen: React.FC = () => {
     );
   };
 
-  if (loading && watchlist.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlatList
+      <OfflineBanner />
+      {loading && watchlist.length === 0 ? (
+        <View style={styles.list}>
+          {Array.from({ length: 9 }).map((_, index) => (
+            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
+          ))}
+        </View>
+      ) : error && watchlist.length === 0 ? (
+        <ErrorView message={error} onRetry={loadWatchlist} />
+      ) : (
+        <FlatList
         data={watchlist}
         renderItem={renderMovie}
         keyExtractor={(item) => item._id || item.id || Math.random().toString()}
@@ -181,7 +186,8 @@ const WatchlistScreen: React.FC = () => {
             </AppText>
           </View>
         }
-      />
+        />
+      )}
     </View>
   );
 };
@@ -221,7 +227,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.55,
+    aspectRatio: 0.65,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
@@ -244,11 +250,11 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   movieTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 2,
     color: "#fff",
-    lineHeight: 16,
+    lineHeight: 14,
   },
   movieMeta: {
     flexDirection: "row",

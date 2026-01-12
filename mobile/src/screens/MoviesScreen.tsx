@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   FlatList,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -14,6 +13,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "../components/Typography";
+import OptimizedImage from "../components/OptimizedImage";
+import { MovieCardSkeleton } from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   moviesService,
@@ -83,6 +86,10 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>("recent");
   const [showSortModal, setShowSortModal] = useState(false);
 
@@ -209,42 +216,71 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
     }
   }, [isAuthenticated]);
 
-  const loadMovies = useCallback(async () => {
+  const loadMovies = useCallback(async (page = 1, append = false) => {
     try {
-      setLoading(true);
+      setError(null);
+      if (!append) {
+        setLoading(true);
+        setCurrentPage(1);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
       const dbMovies = await moviesService.getAll({
-        limit: 100,
+        limit: 20,
+        page,
         sortBy: "updatedAt",
       });
       if (dbMovies.movies && dbMovies.movies.length > 0) {
-        setAllMovies(dbMovies.movies);
-        setMovies(dbMovies.movies);
+        if (append) {
+          setAllMovies(prev => [...prev, ...dbMovies.movies]);
+          setMovies(prev => [...prev, ...dbMovies.movies]);
+        } else {
+          setAllMovies(dbMovies.movies);
+          setMovies(dbMovies.movies);
+        }
+        setHasMore(dbMovies.movies.length === 20);
+        setCurrentPage(page);
+      } else if (!append) {
+        const popular = await movieSearchService.getTollywood({ page: 1 });
+        const moviesList = popular.movies || [];
+        setAllMovies(moviesList);
+        setMovies(moviesList);
+        setHasMore(false);
       } else {
-        const popular = await movieSearchService.getTollywood({ page: 1 });
-        const moviesList = popular.movies || [];
-        setAllMovies(moviesList);
-        setMovies(moviesList);
+        setHasMore(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading movies:", error);
-      try {
-        const popular = await movieSearchService.getTollywood({ page: 1 });
-        const moviesList = popular.movies || [];
-        setAllMovies(moviesList);
-        setMovies(moviesList);
-      } catch (err) {
-        console.error("Error loading popular movies:", err);
+      setError(error.response?.data?.error || "Failed to load movies");
+      if (!append) {
+        try {
+          const popular = await movieSearchService.getTollywood({ page: 1 });
+          const moviesList = popular.movies || [];
+          setAllMovies(moviesList);
+          setMovies(moviesList);
+          setHasMore(false);
+        } catch (err) {
+          console.error("Error loading popular movies:", err);
+        }
       }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  const loadMoreMovies = useCallback(() => {
+    if (!loadingMore && hasMore && !loading) {
+      loadMovies(currentPage + 1, true);
+    }
+  }, [loadingMore, hasMore, loading, currentPage, loadMovies]);
 
   useEffect(() => {
     if (activeTab === "foryou") {
       loadForYouContent();
     } else if (activeTab === "myreviews") {
-      loadMovies();
+      loadMovies(1, false);
     }
   }, [activeTab, loadForYouContent, loadMovies]);
 
@@ -253,7 +289,7 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
       if (activeTab === "foryou") {
         loadForYouContent();
       } else if (activeTab === "myreviews") {
-        loadMovies();
+        loadMovies(1, false);
       }
     }, [activeTab, loadForYouContent, loadMovies])
   );
@@ -289,17 +325,17 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
     setMovies(filteredAndSortedMovies);
   }, [filteredAndSortedMovies]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     if (activeTab === "foryou") {
       setRefreshingForYou(true);
       await loadForYouContent();
       setRefreshingForYou(false);
     } else if (activeTab === "myreviews") {
       setRefreshing(true);
-      await loadMovies();
+      await loadMovies(1, false);
       setRefreshing(false);
     }
-  };
+  }, [activeTab, loadForYouContent, loadMovies]);
 
   const getRatingColor = (rating: number) => {
     if (rating >= 8) return "#4CAF50";
@@ -322,7 +358,7 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
     return renderMovieCard(item);
   };
 
-  const renderMovieCard = (item: Movie, showUserRating = false) => {
+  const renderMovieCard = React.useCallback((item: Movie, showUserRating = false) => {
     const rating =
       showUserRating && item.userRating ? item.userRating : item.rating || 0;
     const ratingColor = getRatingColor(rating);
@@ -339,13 +375,11 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
         activeOpacity={0.8}
       >
         <View style={styles.posterContainer}>
-          {item.posterUrl ? (
-            <Image source={{ uri: item.posterUrl }} style={styles.poster} />
-          ) : (
-            <View style={[styles.poster, styles.posterPlaceholder]}>
-              <Ionicons name="film-outline" size={24} color="#666" />
-            </View>
-          )}
+          <OptimizedImage
+            uri={item.posterUrl}
+            style={styles.poster}
+            placeholderColor="#333"
+          />
         </View>
         <View style={styles.movieInfo}>
           <AppText style={styles.movieTitle} numberOfLines={2}>
@@ -366,7 +400,7 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [navigation]);
 
   const renderHorizontalSection = (
     title: string,
@@ -580,10 +614,20 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
   const renderMyReviewsContent = () => {
     if (loading && movies.length === 0) {
       return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <AppText style={styles.loadingText}>Loading movies...</AppText>
+        <View style={styles.list}>
+          {Array.from({ length: 9 }).map((_, index) => (
+            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
+          ))}
         </View>
+      );
+    }
+
+    if (error && movies.length === 0) {
+      return (
+        <ErrorView
+          message={error}
+          onRetry={() => loadMovies(1, false)}
+        />
       );
     }
 
@@ -622,6 +666,15 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
               colors={["#007AFF"]}
             />
           }
+          onEndReached={loadMoreMovies}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.loadMoreContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
@@ -649,8 +702,9 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       {/* Tab Switcher */}
-      <View style={[styles.tabContainer, { paddingTop: Platform.OS === 'android' ? 0 : insets.top }]}>
+      <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "foryou" && styles.tabActive]}
           onPress={() => setActiveTab("foryou")}
@@ -902,7 +956,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.55,
+    aspectRatio: 0.65,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
@@ -914,10 +968,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   movieTitle: {
-    ...typography.styles.caption,
-    fontFamily: typography.fontFamily.bold,
+    fontSize: 11,
+    fontWeight: "700",
     marginBottom: 2,
     color: "#fff",
+    lineHeight: 14,
   },
   movieMeta: {
     flexDirection: "row",
@@ -976,6 +1031,10 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     marginBottom: 24,
+  },
+  loadMoreContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
   browseButton: {
     backgroundColor: "#007AFF",

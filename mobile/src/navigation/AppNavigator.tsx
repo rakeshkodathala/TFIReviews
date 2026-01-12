@@ -114,6 +114,7 @@ const HomeStack = () => {
         headerTitleStyle: { 
           color: "#fff",
         },
+        headerTitleAlign: "center",
         contentStyle: { 
           backgroundColor: "#1a1a1a",
         },
@@ -177,6 +178,7 @@ const SearchStack = () => {
         },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
+        headerTitleAlign: "center",
         contentStyle: { backgroundColor: "#1a1a1a" },
         headerBackTitle: "",
         gestureEnabled: true,
@@ -233,6 +235,7 @@ const ActivityStack = () => {
         },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
+        headerTitleAlign: "center",
         contentStyle: { backgroundColor: "#1a1a1a" },
         headerBackTitle: "",
         gestureEnabled: true,
@@ -289,6 +292,7 @@ const AccountStack = () => {
         },
         headerTintColor: "#fff",
         headerTitleStyle: { color: "#fff" },
+        headerTitleAlign: "center",
         contentStyle: { backgroundColor: "#1a1a1a" },
         headerBackTitle: "",
         gestureEnabled: true,

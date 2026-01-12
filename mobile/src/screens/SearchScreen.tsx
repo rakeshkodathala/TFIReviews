@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Image,
   ActivityIndicator,
   ScrollView,
   Dimensions,
@@ -13,8 +12,12 @@ import {
   Animated,
 } from "react-native";
 import { AppText, AppTextInput } from "../components/Typography";
+import OptimizedImage from "../components/OptimizedImage";
+import { MovieCardSkeleton } from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 import { movieSearchService, moviesService } from "../services/api";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SearchStackParamList } from "../navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -87,6 +90,7 @@ const SearchScreen: React.FC = () => {
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingPopular, setLoadingPopular] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showAllRecentSearches, setShowAllRecentSearches] = useState(false);
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(
@@ -112,6 +116,17 @@ const SearchScreen: React.FC = () => {
 
     return () => clearInterval(placeholderInterval);
   }, []);
+
+  // Auto-focus search input when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Small delay to ensure the screen is fully mounted
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
   // Animate border color on focus
   useEffect(() => {
@@ -241,8 +256,10 @@ const SearchScreen: React.FC = () => {
       );
 
       setPopularMovies(finalMovies);
+      setError(null);
     } catch (error) {
       console.error("Error loading popular movies:", error);
+      setError("Failed to load popular movies. Please try again.");
       setPopularMovies([]);
     } finally {
       setLoadingPopular(false);
@@ -271,11 +288,13 @@ const SearchScreen: React.FC = () => {
     if (!activeQuery.trim() && !activeGenre) {
       console.log("No search query or genre, clearing results");
       setMovies([]);
+      setError(null);
       return;
     }
 
     try {
       setLoading(true);
+      setError(null);
 
       if (activeQuery.trim()) {
         await saveRecentSearch(activeQuery);
@@ -308,6 +327,7 @@ const SearchScreen: React.FC = () => {
         // Apply sorting
         const sortedMovies = sortMovies(filteredMovies, sortBy);
         setMovies(sortedMovies);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -372,6 +392,7 @@ const SearchScreen: React.FC = () => {
           // Apply sorting
           const sortedMovies = sortMovies(finalMovies, sortBy);
           setMovies(sortedMovies);
+          setError(null);
           setLoading(false);
           return;
         } else {
@@ -391,6 +412,7 @@ const SearchScreen: React.FC = () => {
       if (error?.response?.data?.error) {
         console.error("API Error:", error.response.data.error);
       }
+      setError("Failed to search movies. Please try again.");
       setMovies([]);
     } finally {
       setLoading(false);
@@ -523,13 +545,11 @@ const SearchScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         <View style={styles.posterContainer}>
-          {item.posterUrl ? (
-            <Image source={{ uri: item.posterUrl }} style={styles.poster} />
-          ) : (
-            <View style={[styles.poster, styles.posterPlaceholder]}>
-              <Ionicons name="film-outline" size={24} color="#666" />
-            </View>
-          )}
+          <OptimizedImage
+            uri={item.posterUrl}
+            style={styles.poster}
+            placeholderColor="#333"
+          />
           {badge && (
             <View style={[styles.movieBadge, { backgroundColor: badge.color }]}>
               <Ionicons name={badge.icon as any} size={10} color="#fff" />
@@ -629,6 +649,7 @@ const SearchScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
         <View style={styles.searchContainer}>
@@ -821,8 +842,14 @@ const SearchScreen: React.FC = () => {
 
         {loading ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
+            <View style={styles.skeletonGrid}>
+              {Array.from({ length: 9 }).map((_, index) => (
+                <MovieCardSkeleton key={index} width={CARD_WIDTH} />
+              ))}
+            </View>
           </View>
+        ) : error && showSearchResults ? (
+          <ErrorView message={error} onRetry={() => handleSearch(searchQuery, selectedGenre)} />
         ) : showSearchResults ? (
           movies.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -943,14 +970,15 @@ const SearchScreen: React.FC = () => {
                     </AppText>
                   )}
                 </View>
-                {loadingPopular ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#007AFF" />
-                    <AppText style={styles.loadingText}>
-                      Finding great movies...
-                    </AppText>
-                  </View>
-                ) : popularMovies.length > 0 ? (
+        {loadingPopular ? (
+          <View style={styles.popularMoviesGrid}>
+            {Array.from({ length: 9 }).map((_, index) => (
+              <MovieCardSkeleton key={index} width={POPULAR_CARD_WIDTH} />
+            ))}
+          </View>
+        ) : error && !showSearchResults ? (
+          <ErrorView message={error} onRetry={loadPopularMovies} />
+        ) : popularMovies.length > 0 ? (
                   <View style={styles.popularMoviesGrid}>
                     {popularMovies.map((item, index) => {
                       const key =
@@ -1128,6 +1156,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingBottom: 24,
   },
+  skeletonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: LIST_PADDING,
+    paddingBottom: 24,
+  },
   movieCard: {
     margin: CARD_MARGIN,
     borderRadius: 12,
@@ -1145,7 +1179,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.55,
+    aspectRatio: 0.65,
     backgroundColor: "#333",
   },
   posterPlaceholder: {

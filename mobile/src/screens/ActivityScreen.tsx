@@ -4,9 +4,7 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
-  Image,
   Animated,
 } from "react-native";
 import { AppText } from "../components/Typography";
@@ -16,6 +14,10 @@ import { reviewsService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { ActivityStackParamList } from "../navigation/AppNavigator";
 import { Ionicons } from "@expo/vector-icons";
+import OptimizedImage from "../components/OptimizedImage";
+import SkeletonLoader from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 
 type ActivityScreenNavigationProp = NativeStackNavigationProp<
   ActivityStackParamList,
@@ -28,6 +30,7 @@ const ActivityScreen: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Format date to relative time (e.g., "2 hours ago", "3 days ago")
   const formatRelativeTime = (dateString: string): string => {
@@ -80,8 +83,10 @@ const ActivityScreen: React.FC = () => {
       }
 
       setReviews(reviewsToSet);
+      setError(null);
     } catch (error: any) {
       console.error("Error loading reviews:", error);
+      setError("Failed to load reviews. Please try again.");
       setReviews([]);
     } finally {
       setLoading(false);
@@ -155,17 +160,11 @@ const ActivityScreen: React.FC = () => {
           {/* Movie Row: Poster + Title + Rating */}
           <View style={styles.movieRow}>
             {/* Movie Poster */}
-            {movie.posterUrl ? (
-              <Image
-                source={{ uri: movie.posterUrl }}
-                style={styles.moviePoster}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.moviePoster, styles.posterPlaceholder]}>
-                <Ionicons name="film-outline" size={32} color="#666" />
-              </View>
-            )}
+            <OptimizedImage
+              uri={movie.posterUrl}
+              style={styles.moviePoster}
+              placeholderColor="#333"
+            />
 
             {/* Content Section */}
             <View style={styles.contentSection}>
@@ -213,9 +212,10 @@ const ActivityScreen: React.FC = () => {
               <View style={styles.userRow}>
                 <View style={styles.userInfo}>
                   {reviewer.avatar ? (
-                    <Image
-                      source={{ uri: reviewer.avatar }}
+                    <OptimizedImage
+                      uri={reviewer.avatar}
                       style={styles.avatar}
+                      placeholderColor="#007AFF"
                     />
                   ) : (
                     <View style={styles.avatar}>
@@ -256,18 +256,30 @@ const ActivityScreen: React.FC = () => {
     );
   };
 
-  if (loading && reviews.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <AppText style={styles.loadingText}>Loading reviews...</AppText>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <FlatList
+      <OfflineBanner />
+      {loading && reviews.length === 0 ? (
+        <View style={styles.list}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <View key={index} style={styles.reviewCard}>
+              <View style={styles.reviewContent}>
+                <View style={styles.movieRow}>
+                  <SkeletonLoader width={55} height={82} borderRadius={8} />
+                  <View style={styles.contentSection}>
+                    <SkeletonLoader width="70%" height={16} borderRadius={4} style={{ marginBottom: 8 }} />
+                    <SkeletonLoader width="50%" height={12} borderRadius={4} />
+                  </View>
+                </View>
+                <SkeletonLoader width="100%" height={60} borderRadius={4} style={{ marginTop: 10 }} />
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : error && reviews.length === 0 ? (
+        <ErrorView message={error} onRetry={loadReviews} />
+      ) : (
+        <FlatList
         data={reviews}
         renderItem={renderReview}
         keyExtractor={(item) => {
@@ -309,7 +321,8 @@ const ActivityScreen: React.FC = () => {
             </View>
           ) : null
         }
-      />
+        />
+      )}
     </View>
   );
 };
@@ -351,7 +364,7 @@ const styles = StyleSheet.create({
   },
   moviePoster: {
     width: 55,
-    height: 82,
+    height: 70,
     borderRadius: 8,
     backgroundColor: "#333",
     marginRight: 12,
@@ -376,11 +389,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   movieTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: "700",
+    marginBottom: 2,
     color: "#fff",
-    marginBottom: 3,
-    lineHeight: 20,
+    lineHeight: 14,
   },
   movieYear: {
     fontSize: 13,

@@ -4,15 +4,17 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
-  Image,
   Dimensions,
   FlatList,
 } from "react-native";
 import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
 import { movieSearchService } from "../services/api";
+import OptimizedImage from "../components/OptimizedImage";
+import { MovieCardSkeleton } from "../components/SkeletonLoader";
+import ErrorView from "../components/ErrorView";
+import OfflineBanner from "../components/OfflineBanner";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_MARGIN = 2;
@@ -76,6 +78,7 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
   const [popularThisMonth, setPopularThisMonth] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const getRatingColor = (rating: number) => {
     if (rating >= 8) return "#4CAF50";
@@ -150,8 +153,10 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
       }
 
       setPopularThisMonth(recentMovies);
+      setError(null);
     } catch (error) {
       console.error("Error loading popular this month:", error);
+      setError("Failed to load trending movies. Please try again.");
       setPopularThisMonth([]);
     } finally {
       setLoading(false);
@@ -185,13 +190,11 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
         activeOpacity={0.8}
       >
         <View style={styles.posterContainer}>
-          {item.posterUrl ? (
-            <Image source={{ uri: item.posterUrl }} style={styles.poster} />
-          ) : (
-            <View style={[styles.poster, styles.posterPlaceholder]}>
-              <Ionicons name="film-outline" size={24} color="#666" />
-            </View>
-          )}
+          <OptimizedImage
+            uri={item.posterUrl}
+            style={styles.poster}
+            placeholderColor="#333"
+          />
           {badge && (
             <View style={[styles.trendingBadge, { backgroundColor: badge.color }]}>
               <Ionicons name={badge.icon as any} size={10} color="#fff" />
@@ -220,17 +223,9 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
     );
   };
 
-  if (loading && popularThisMonth.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <AppText style={styles.loadingText}>Loading trending movies...</AppText>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
+      <OfflineBanner />
       {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderLeft}>
@@ -244,39 +239,49 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
       </View>
 
       {/* Movies Grid */}
-      <FlatList
-        data={popularThisMonth}
-        renderItem={renderMovieCard}
-        keyExtractor={(item) => {
-          const key =
-            item.tmdbId?.toString() || item._id || item.id?.toString();
-          return key ? String(key) : Math.random().toString();
-        }}
-        numColumns={NUM_COLUMNS}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#007AFF"
-            colors={["#007AFF"]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="flame-outline" size={64} color="#666" />
+      {loading && popularThisMonth.length === 0 ? (
+        <View style={styles.list}>
+          {Array.from({ length: 9 }).map((_, index) => (
+            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
+          ))}
+        </View>
+      ) : error && popularThisMonth.length === 0 ? (
+        <ErrorView message={error} onRetry={loadPopularThisMonth} />
+      ) : (
+        <FlatList
+          data={popularThisMonth}
+          renderItem={renderMovieCard}
+          keyExtractor={(item) => {
+            const key =
+              item.tmdbId?.toString() || item._id || item.id?.toString();
+            return key ? String(key) : Math.random().toString();
+          }}
+          numColumns={NUM_COLUMNS}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#007AFF"
+              colors={["#007AFF"]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="flame-outline" size={64} color="#666" />
+                </View>
+                <AppText style={styles.emptyTitle}>No Trending Movies</AppText>
+                <AppText style={styles.emptyText}>
+                  Check back later for trending Indian movies from this month!
+                </AppText>
               </View>
-              <AppText style={styles.emptyTitle}>No Trending Movies</AppText>
-              <AppText style={styles.emptyText}>
-                Check back later for trending Indian movies from this month!
-              </AppText>
-            </View>
-          ) : null
-        }
-      />
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 };
@@ -372,7 +377,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.55,
+    aspectRatio: 0.65,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
