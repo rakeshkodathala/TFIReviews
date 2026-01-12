@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.65,
+    aspectRatio: 0.75,
     backgroundColor: "#333",
   },
   posterPlaceholder: {

@@ -535,36 +535,55 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
 
         {/* 2. Taste Snapshot */}
         {tasteSnapshot && (
-          <View style={styles.tasteSnapshotCard}>
-            <View style={styles.tasteSnapshotHeader}>
-              <Ionicons name="film" size={24} color="#007AFF" />
-              <AppText style={styles.tasteSnapshotTitle}>
-                Your Taste This Month
-              </AppText>
-            </View>
-            <View style={styles.tasteSnapshotContent}>
-              <View style={styles.tasteSnapshotItem}>
-                <Ionicons name="star" size={20} color="#FFA726" />
-                <AppText style={styles.tasteSnapshotLabel}>Avg rating:</AppText>
-                <AppText style={styles.tasteSnapshotValue}>
-                  {tasteSnapshot.avgRating.toFixed(1)}
-                </AppText>
+          <View style={styles.sectionContainer}>
+            <View style={styles.tasteSnapshotCard}>
+              <View style={styles.tasteSnapshotHeader}>
+                <View style={styles.tasteSnapshotIconContainer}>
+                  <Ionicons name="stats-chart" size={18} color="#007AFF" />
+                </View>
+                <View style={styles.tasteSnapshotHeaderText}>
+                  <AppText style={styles.tasteSnapshotTitle}>
+                    Your Taste This Month
+                  </AppText>
+                  <AppText style={styles.tasteSnapshotSubtitle}>
+                    {tasteSnapshot.totalReviews} {tasteSnapshot.totalReviews === 1 ? 'review' : 'reviews'}
+                  </AppText>
+                </View>
               </View>
-              <View style={styles.tasteSnapshotItem}>
-                <Ionicons name="color-palette" size={20} color="#9C27B0" />
-                <AppText style={styles.tasteSnapshotLabel}>Top genre:</AppText>
-                <AppText style={styles.tasteSnapshotValue}>
-                  {tasteSnapshot.topGenre}
-                </AppText>
-              </View>
-              <View style={styles.tasteSnapshotItem}>
-                <Ionicons name="diamond" size={20} color="#00BCD4" />
-                <AppText style={styles.tasteSnapshotLabel}>
-                  Hidden gems:
-                </AppText>
-                <AppText style={styles.tasteSnapshotValue}>
-                  {tasteSnapshot.hiddenGemsCount}
-                </AppText>
+              <View style={styles.tasteSnapshotGrid}>
+                <View style={styles.tasteSnapshotStat}>
+                  <View style={[styles.tasteSnapshotStatIcon, { backgroundColor: 'rgba(255, 167, 38, 0.15)' }]}>
+                    <Ionicons name="star" size={16} color="#FFA726" />
+                  </View>
+                  <View style={styles.tasteSnapshotStatContent}>
+                    <AppText style={styles.tasteSnapshotStatLabel}>Avg Rating</AppText>
+                    <AppText style={styles.tasteSnapshotStatValue}>
+                      {tasteSnapshot.avgRating.toFixed(1)}<AppText style={styles.tasteSnapshotStatUnit}>/10</AppText>
+                    </AppText>
+                  </View>
+                </View>
+                <View style={styles.tasteSnapshotStat}>
+                  <View style={[styles.tasteSnapshotStatIcon, { backgroundColor: 'rgba(156, 39, 176, 0.15)' }]}>
+                    <Ionicons name="film" size={16} color="#9C27B0" />
+                  </View>
+                  <View style={styles.tasteSnapshotStatContent}>
+                    <AppText style={styles.tasteSnapshotStatLabel}>Top Genre</AppText>
+                    <AppText style={styles.tasteSnapshotStatValue} numberOfLines={1}>
+                      {tasteSnapshot.topGenre}
+                    </AppText>
+                  </View>
+                </View>
+                <View style={styles.tasteSnapshotStat}>
+                  <View style={[styles.tasteSnapshotStatIcon, { backgroundColor: 'rgba(0, 188, 212, 0.15)' }]}>
+                    <Ionicons name="diamond" size={16} color="#00BCD4" />
+                  </View>
+                  <View style={styles.tasteSnapshotStatContent}>
+                    <AppText style={styles.tasteSnapshotStatLabel}>Hidden Gems</AppText>
+                    <AppText style={styles.tasteSnapshotStatValue}>
+                      {tasteSnapshot.hiddenGemsCount}
+                    </AppText>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -956,7 +975,7 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: "100%",
-    aspectRatio: 0.65,
+    aspectRatio: 0.75,
     backgroundColor: "#333",
   },
   posterPlaceholder: {
@@ -1125,40 +1144,84 @@ const styles = StyleSheet.create({
   },
   tasteSnapshotCard: {
     backgroundColor: "#2a2a2a",
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: LIST_PADDING,
-    marginTop: 24,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: "#333",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
   },
   tasteSnapshotHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
+    gap: 10,
   },
-  tasteSnapshotTitle: {
-    ...typography.styles.h4,
-    color: "#fff",
-  },
-  tasteSnapshotContent: {
-    gap: 16,
-  },
-  tasteSnapshotItem: {
-    flexDirection: "row",
+  tasteSnapshotIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 122, 255, 0.15)",
+    justifyContent: "center",
     alignItems: "center",
-    gap: 12,
   },
-  tasteSnapshotLabel: {
-    ...typography.styles.bodySmall,
-    color: "#999",
+  tasteSnapshotHeaderText: {
     flex: 1,
   },
-  tasteSnapshotValue: {
-    ...typography.styles.body,
-    fontFamily: typography.fontFamily.bold,
+  tasteSnapshotTitle: {
+    fontSize: 16,
+    fontWeight: "700",
     color: "#fff",
+    marginBottom: 1,
+  },
+  tasteSnapshotSubtitle: {
+    fontSize: 11,
+    color: "#999",
+  },
+  tasteSnapshotGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  tasteSnapshotStat: {
+    flex: 1,
+    backgroundColor: "#1a1a1a",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  tasteSnapshotStatIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  tasteSnapshotStatContent: {
+    alignItems: "center",
+    width: "100%",
+  },
+  tasteSnapshotStatLabel: {
+    fontSize: 10,
+    color: "#999",
+    marginBottom: 3,
+    textAlign: "center",
+  },
+  tasteSnapshotStatValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
+  },
+  tasteSnapshotStatUnit: {
+    fontSize: 10,
+    color: "#999",
+    fontWeight: "400",
   },
 });
 

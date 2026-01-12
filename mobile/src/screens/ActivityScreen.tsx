@@ -228,7 +228,9 @@ const ActivityScreen: React.FC = () => {
                     {reviewer.username || "Anonymous"}
                   </AppText>
                 </View>
-                {timeAgo && <AppText style={styles.reviewTime}>{timeAgo}</AppText>}
+                {timeAgo && (
+                  <AppText style={styles.reviewTime}>{timeAgo}</AppText>
+                )}
               </View>
             </View>
           </View>
@@ -247,7 +249,9 @@ const ActivityScreen: React.FC = () => {
                 onPress={() => handleReviewPress(item)}
                 activeOpacity={0.7}
               >
-                <AppText style={styles.readMoreText}>Read full review →</AppText>
+                <AppText style={styles.readMoreText}>
+                  Read full review →
+                </AppText>
               </TouchableOpacity>
             )}
           </View>
@@ -267,11 +271,21 @@ const ActivityScreen: React.FC = () => {
                 <View style={styles.movieRow}>
                   <SkeletonLoader width={55} height={82} borderRadius={8} />
                   <View style={styles.contentSection}>
-                    <SkeletonLoader width="70%" height={16} borderRadius={4} style={{ marginBottom: 8 }} />
+                    <SkeletonLoader
+                      width="70%"
+                      height={16}
+                      borderRadius={4}
+                      style={{ marginBottom: 8 }}
+                    />
                     <SkeletonLoader width="50%" height={12} borderRadius={4} />
                   </View>
                 </View>
-                <SkeletonLoader width="100%" height={60} borderRadius={4} style={{ marginTop: 10 }} />
+                <SkeletonLoader
+                  width="100%"
+                  height={60}
+                  borderRadius={4}
+                  style={{ marginTop: 10 }}
+                />
               </View>
             </View>
           ))}
@@ -280,47 +294,49 @@ const ActivityScreen: React.FC = () => {
         <ErrorView message={error} onRetry={loadReviews} />
       ) : (
         <FlatList
-        data={reviews}
-        renderItem={renderReview}
-        keyExtractor={(item) => {
-          const key = item._id || item.id || Math.random().toString();
-          return String(key);
-        }}
-        contentContainerStyle={
-          reviews.length === 0 ? styles.listEmpty : styles.list
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#007AFF"
-            colors={["#007AFF"]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="film-outline" size={64} color="#666" />
+          data={reviews}
+          renderItem={renderReview}
+          keyExtractor={(item) => {
+            const key = item._id || item.id || Math.random().toString();
+            return String(key);
+          }}
+          contentContainerStyle={
+            reviews.length === 0 ? styles.listEmpty : styles.list
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#007AFF"
+              colors={["#007AFF"]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="film-outline" size={64} color="#666" />
+                </View>
+                <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
+                <AppText style={styles.emptyText}>
+                  Start reviewing movies to see them appear here!
+                </AppText>
+                <TouchableOpacity
+                  style={styles.browseButton}
+                  onPress={() => {
+                    // Navigate to movies screen
+                    navigation.navigate("MovieDetails" as any, {});
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <AppText style={styles.browseButtonText}>
+                    Browse Movies
+                  </AppText>
+                </TouchableOpacity>
               </View>
-              <AppText style={styles.emptyTitle}>No Reviews Yet</AppText>
-              <AppText style={styles.emptyText}>
-                Start reviewing movies to see them appear here!
-              </AppText>
-              <TouchableOpacity
-                style={styles.browseButton}
-                onPress={() => {
-                  // Navigate to movies screen
-                  navigation.navigate("MovieDetails" as any, {});
-                }}
-                activeOpacity={0.7}
-              >
-                <AppText style={styles.browseButtonText}>Browse Movies</AppText>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
+            ) : null
+          }
         />
       )}
     </View>
@@ -363,8 +379,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   moviePoster: {
-    width: 55,
-    height: 70,
+    width: 70,
+    height: 80,
     borderRadius: 8,
     backgroundColor: "#333",
     marginRight: 12,
@@ -389,14 +405,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   movieTitle: {
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: "700",
     marginBottom: 2,
     color: "#fff",
-    lineHeight: 14,
+    lineHeight: 18,
   },
   movieYear: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "500",
     color: "#999",
   },
