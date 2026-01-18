@@ -528,7 +528,13 @@ const SearchScreen: React.FC = () => {
     return null;
   };
 
-  const renderMovie = ({ item, cardWidth = CARD_WIDTH }: { item: Movie; cardWidth?: number }) => {
+  const renderMovie = ({
+    item,
+    cardWidth = CARD_WIDTH,
+  }: {
+    item: Movie;
+    cardWidth?: number;
+  }) => {
     const rating = item.rating || 0;
     const ratingColor = getRatingColor(rating);
     const year = item.releaseDate
@@ -652,358 +658,371 @@ const SearchScreen: React.FC = () => {
       <OfflineBanner />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-        <View style={styles.searchContainer}>
-          <Animated.View
-            style={[
-              styles.searchInputContainer,
-              {
-                borderColor: borderColorAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["#333", "#007AFF"],
-                }),
-                shadowOpacity: borderColorAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.3],
-                }),
-              },
-            ]}
-          >
-            <View style={styles.searchIconContainer}>
-              <Ionicons
-                name="search"
-                size={20}
-                color={isFocused ? "#007AFF" : "#666"}
-              />
-            </View>
-            <AppTextInput
-              ref={searchInputRef}
-              style={styles.searchInput}
-              placeholder={PLACEHOLDER_MESSAGES[currentPlaceholder]}
-              placeholderTextColor="#666"
-              value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                // Clear movies immediately if text is cleared to show recent searches/popular
-                if (!text.trim() && !selectedGenre) {
-                  setMovies([]);
-                }
-              }}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              onSubmitEditing={(e) => {
-                const query = e.nativeEvent.text || searchQuery;
-                console.log("Search submitted with query:", query);
-                if (query.trim()) {
-                  // Clear any pending debounced search
-                  if (debounceTimer) {
-                    clearTimeout(debounceTimer);
-                    setDebounceTimer(null);
+          <View style={styles.searchContainer}>
+            <Animated.View
+              style={[
+                styles.searchInputContainer,
+                {
+                  borderColor: borderColorAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["#333", "#007AFF"],
+                  }),
+                  shadowOpacity: borderColorAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.3],
+                  }),
+                },
+              ]}
+            >
+              <View style={styles.searchIconContainer}>
+                <Ionicons
+                  name="search"
+                  size={20}
+                  color={isFocused ? "#007AFF" : "#666"}
+                />
+              </View>
+              <AppTextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder={PLACEHOLDER_MESSAGES[currentPlaceholder]}
+                placeholderTextColor="#666"
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  // Clear movies immediately if text is cleared to show recent searches/popular
+                  if (!text.trim() && !selectedGenre) {
+                    setMovies([]);
                   }
-                  // Immediate search on enter
-                  handleSearch(query);
-                }
-              }}
-              returnKeyType="search"
-              autoCapitalize="none"
-              autoCorrect={false}
-              blurOnSubmit={true}
-              enablesReturnKeyAutomatically={true}
-            />
-            {searchQuery.length > 0 && (
+                }}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                onSubmitEditing={(e) => {
+                  const query = e.nativeEvent.text || searchQuery;
+                  console.log("Search submitted with query:", query);
+                  if (query.trim()) {
+                    // Clear any pending debounced search
+                    if (debounceTimer) {
+                      clearTimeout(debounceTimer);
+                      setDebounceTimer(null);
+                    }
+                    // Immediate search on enter
+                    handleSearch(query);
+                  }
+                }}
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={true}
+                enablesReturnKeyAutomatically={true}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={handleClearSearch}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          </View>
+
+          {renderGenreFilter()}
+
+          {/* Sort Options - Only show when there are search results */}
+          {showSearchResults && movies.length > 0 && (
+            <View style={styles.sortContainer}>
               <TouchableOpacity
-                style={styles.clearButton}
-                onPress={handleClearSearch}
+                style={styles.sortButton}
+                onPress={() => setShowSortOptions(!showSortOptions)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="close-circle" size={20} color="#999" />
+                <Ionicons
+                  name="swap-vertical-outline"
+                  size={18}
+                  color="#007AFF"
+                />
+                <AppText style={styles.sortButtonText}>
+                  Sort:{" "}
+                  {sortBy === "relevance"
+                    ? "Relevance"
+                    : sortBy === "rating"
+                    ? "Rating"
+                    : sortBy === "date"
+                    ? "Release Date"
+                    : "Popularity"}
+                </AppText>
+                <Ionicons
+                  name={showSortOptions ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color="#007AFF"
+                />
               </TouchableOpacity>
-            )}
-          </Animated.View>
-        </View>
 
-        {renderGenreFilter()}
-
-        {/* Sort Options - Only show when there are search results */}
-        {showSearchResults && movies.length > 0 && (
-          <View style={styles.sortContainer}>
-            <TouchableOpacity
-              style={styles.sortButton}
-              onPress={() => setShowSortOptions(!showSortOptions)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="swap-vertical-outline"
-                size={18}
-                color="#007AFF"
-              />
-              <AppText style={styles.sortButtonText}>
-                Sort:{" "}
-                {sortBy === "relevance"
-                  ? "Relevance"
-                  : sortBy === "rating"
-                  ? "Rating"
-                  : sortBy === "date"
-                  ? "Release Date"
-                  : "Popularity"}
-              </AppText>
-              <Ionicons
-                name={showSortOptions ? "chevron-up" : "chevron-down"}
-                size={18}
-                color="#007AFF"
-              />
-            </TouchableOpacity>
-
-            {showSortOptions && (
-              <View style={styles.sortOptionsContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.sortOption,
-                    sortBy === "relevance" && styles.sortOptionActive,
-                  ]}
-                  onPress={() => handleSortChange("relevance")}
-                  activeOpacity={0.7}
-                >
-                  <AppText
+              {showSortOptions && (
+                <View style={styles.sortOptionsContainer}>
+                  <TouchableOpacity
                     style={[
-                      styles.sortOptionText,
-                      sortBy === "relevance" && styles.sortOptionTextActive,
+                      styles.sortOption,
+                      sortBy === "relevance" && styles.sortOptionActive,
                     ]}
+                    onPress={() => handleSortChange("relevance")}
+                    activeOpacity={0.7}
                   >
-                    Relevance
-                  </AppText>
-                  {sortBy === "relevance" && (
-                    <Ionicons name="checkmark" size={18} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.sortOption,
-                    sortBy === "rating" && styles.sortOptionActive,
-                  ]}
-                  onPress={() => handleSortChange("rating")}
-                  activeOpacity={0.7}
-                >
-                  <AppText
-                    style={[
-                      styles.sortOptionText,
-                      sortBy === "rating" && styles.sortOptionTextActive,
-                    ]}
-                  >
-                    Rating (High to Low)
-                  </AppText>
-                  {sortBy === "rating" && (
-                    <Ionicons name="checkmark" size={18} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.sortOption,
-                    sortBy === "date" && styles.sortOptionActive,
-                  ]}
-                  onPress={() => handleSortChange("date")}
-                  activeOpacity={0.7}
-                >
-                  <AppText
-                    style={[
-                      styles.sortOptionText,
-                      sortBy === "date" && styles.sortOptionTextActive,
-                    ]}
-                  >
-                    Release Date (Newest)
-                  </AppText>
-                  {sortBy === "date" && (
-                    <Ionicons name="checkmark" size={18} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.sortOption,
-                    sortBy === "popularity" && styles.sortOptionActive,
-                  ]}
-                  onPress={() => handleSortChange("popularity")}
-                  activeOpacity={0.7}
-                >
-                  <AppText
-                    style={[
-                      styles.sortOptionText,
-                      sortBy === "popularity" && styles.sortOptionTextActive,
-                    ]}
-                  >
-                    Popularity
-                  </AppText>
-                  {sortBy === "popularity" && (
-                    <Ionicons name="checkmark" size={18} color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <View style={styles.skeletonGrid}>
-              {Array.from({ length: 9 }).map((_, index) => (
-                <MovieCardSkeleton key={index} width={CARD_WIDTH} />
-              ))}
-            </View>
-          </View>
-        ) : error && showSearchResults ? (
-          <ErrorView message={error} onRetry={() => handleSearch(searchQuery, selectedGenre)} />
-        ) : showSearchResults ? (
-          movies.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="search-outline" size={60} color="#666" />
-              </View>
-              <AppText style={styles.emptyTitle}>
-                {selectedGenre
-                  ? `No ${selectedGenre} movies found`
-                  : "Hmm, we couldn't find that"}
-              </AppText>
-              <AppText style={styles.emptySubtext}>
-                {selectedGenre
-                  ? "Try selecting a different genre or search for a specific movie"
-                  : "Try:"}
-              </AppText>
-              {!selectedGenre && (
-                <View style={styles.emptySuggestions}>
-                  <AppText style={styles.emptySuggestionText}>
-                    • Check spelling
-                  </AppText>
-                  <AppText style={styles.emptySuggestionText}>
-                    • Search by genre instead
-                  </AppText>
-                  <AppText style={styles.emptySuggestionText}>
-                    • Browse popular movies
-                  </AppText>
-                </View>
-              )}
-              {!selectedGenre && (
-                <TouchableOpacity
-                  style={styles.surpriseButton}
-                  onPress={() => {
-                    // Show a random popular movie
-                    if (popularMovies.length > 0) {
-                      const randomMovie =
-                        popularMovies[
-                          Math.floor(Math.random() * popularMovies.length)
-                        ];
-                      navigation.navigate("MovieDetails", {
-                        movie: randomMovie,
-                      });
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="sparkles" size={16} color="#fff" />
-                  <AppText style={styles.surpriseButtonText}>
-                    Surprise me
-                  </AppText>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            <FlatList
-              data={movies}
-              renderItem={renderMovie}
-              keyExtractor={(item) => {
-                const key =
-                  item.tmdbId?.toString() || item._id || item.id?.toString();
-                return key ? String(key) : Math.random().toString();
-              }}
-              numColumns={3}
-              contentContainerStyle={styles.list}
-              keyboardShouldPersistTaps="handled"
-              onScrollBeginDrag={Keyboard.dismiss}
-            />
-          )
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={Keyboard.dismiss}
-          >
-            {showRecentSearches && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <AppText style={styles.sectionTitle}>Recent Searches</AppText>
-                  <View style={styles.sectionHeaderRight}>
-                    {recentSearches.length > 4 && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          setShowAllRecentSearches(!showAllRecentSearches)
-                        }
-                        style={styles.seeAllButton}
-                      >
-                        <AppText style={styles.seeAllText}>
-                          {showAllRecentSearches ? "Show Less" : "See All"}
-                        </AppText>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={clearRecentSearches}>
-                      <AppText style={styles.clearAllText}>Clear</AppText>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.recentSearchesContainer}>
-                  {(showAllRecentSearches
-                    ? recentSearches
-                    : recentSearches.slice(0, 4)
-                  ).map((query, index) => renderRecentSearch(query, index))}
-                </View>
-              </View>
-            )}
-
-            {showRecentSearches && showPopularMovies && (
-              <View style={styles.sectionDivider} />
-            )}
-
-            {showPopularMovies && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <AppText style={styles.sectionTitle}>Popular Movies</AppText>
-                  {popularMovies.length > 0 && (
-                    <AppText style={styles.sectionSubtitle}>
-                      {popularMovies.length} movies
+                    <AppText
+                      style={[
+                        styles.sortOptionText,
+                        sortBy === "relevance" && styles.sortOptionTextActive,
+                      ]}
+                    >
+                      Relevance
                     </AppText>
-                  )}
+                    {sortBy === "relevance" && (
+                      <Ionicons name="checkmark" size={18} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortOption,
+                      sortBy === "rating" && styles.sortOptionActive,
+                    ]}
+                    onPress={() => handleSortChange("rating")}
+                    activeOpacity={0.7}
+                  >
+                    <AppText
+                      style={[
+                        styles.sortOptionText,
+                        sortBy === "rating" && styles.sortOptionTextActive,
+                      ]}
+                    >
+                      Rating (High to Low)
+                    </AppText>
+                    {sortBy === "rating" && (
+                      <Ionicons name="checkmark" size={18} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortOption,
+                      sortBy === "date" && styles.sortOptionActive,
+                    ]}
+                    onPress={() => handleSortChange("date")}
+                    activeOpacity={0.7}
+                  >
+                    <AppText
+                      style={[
+                        styles.sortOptionText,
+                        sortBy === "date" && styles.sortOptionTextActive,
+                      ]}
+                    >
+                      Release Date (Newest)
+                    </AppText>
+                    {sortBy === "date" && (
+                      <Ionicons name="checkmark" size={18} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortOption,
+                      sortBy === "popularity" && styles.sortOptionActive,
+                    ]}
+                    onPress={() => handleSortChange("popularity")}
+                    activeOpacity={0.7}
+                  >
+                    <AppText
+                      style={[
+                        styles.sortOptionText,
+                        sortBy === "popularity" && styles.sortOptionTextActive,
+                      ]}
+                    >
+                      Popularity
+                    </AppText>
+                    {sortBy === "popularity" && (
+                      <Ionicons name="checkmark" size={18} color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
                 </View>
-        {loadingPopular ? (
-          <View style={styles.popularMoviesGrid}>
-            {Array.from({ length: 9 }).map((_, index) => (
-              <MovieCardSkeleton key={index} width={POPULAR_CARD_WIDTH} />
-            ))}
-          </View>
-        ) : error && !showSearchResults ? (
-          <ErrorView message={error} onRetry={loadPopularMovies} />
-        ) : popularMovies.length > 0 ? (
-                  <View style={styles.popularMoviesGrid}>
-                    {popularMovies.map((item, index) => {
-                      const key =
-                        item.tmdbId?.toString() ||
-                        item._id ||
-                        item.id?.toString() ||
-                        `popular-${index}`;
-                      return (
-                        <View key={key}>
-                          {renderMovie({ item, cardWidth: POPULAR_CARD_WIDTH })}
-                        </View>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <View style={styles.emptyPopularContainer}>
-                    <AppText style={styles.emptyPopularText}>
-                      No popular movies available at the moment
+              )}
+            </View>
+          )}
+
+          {loading ? (
+            <View style={styles.centerContainer}>
+              <View style={styles.skeletonGrid}>
+                {Array.from({ length: 9 }).map((_, index) => (
+                  <MovieCardSkeleton key={index} width={CARD_WIDTH} />
+                ))}
+              </View>
+            </View>
+          ) : error && showSearchResults ? (
+            <ErrorView
+              message={error}
+              onRetry={() => handleSearch(searchQuery, selectedGenre)}
+            />
+          ) : showSearchResults ? (
+            movies.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="search-outline" size={60} color="#666" />
+                </View>
+                <AppText style={styles.emptyTitle}>
+                  {selectedGenre
+                    ? `No ${selectedGenre} movies found`
+                    : "Hmm, we couldn't find that"}
+                </AppText>
+                <AppText style={styles.emptySubtext}>
+                  {selectedGenre
+                    ? "Try selecting a different genre or search for a specific movie"
+                    : "Try:"}
+                </AppText>
+                {!selectedGenre && (
+                  <View style={styles.emptySuggestions}>
+                    <AppText style={styles.emptySuggestionText}>
+                      • Check spelling
+                    </AppText>
+                    <AppText style={styles.emptySuggestionText}>
+                      • Search by genre instead
+                    </AppText>
+                    <AppText style={styles.emptySuggestionText}>
+                      • Browse popular movies
                     </AppText>
                   </View>
                 )}
+                {!selectedGenre && (
+                  <TouchableOpacity
+                    style={styles.surpriseButton}
+                    onPress={() => {
+                      // Show a random popular movie
+                      if (popularMovies.length > 0) {
+                        const randomMovie =
+                          popularMovies[
+                            Math.floor(Math.random() * popularMovies.length)
+                          ];
+                        navigation.navigate("MovieDetails", {
+                          movie: randomMovie,
+                        });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="sparkles" size={16} color="#fff" />
+                    <AppText style={styles.surpriseButtonText}>
+                      Surprise me
+                    </AppText>
+                  </TouchableOpacity>
+                )}
               </View>
-            )}
-          </ScrollView>
-        )}
+            ) : (
+              <FlatList
+                data={movies}
+                renderItem={renderMovie}
+                keyExtractor={(item) => {
+                  const key =
+                    item.tmdbId?.toString() || item._id || item.id?.toString();
+                  return key ? String(key) : Math.random().toString();
+                }}
+                numColumns={3}
+                contentContainerStyle={styles.list}
+                keyboardShouldPersistTaps="handled"
+                onScrollBeginDrag={Keyboard.dismiss}
+              />
+            )
+          ) : (
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={Keyboard.dismiss}
+            >
+              {showRecentSearches && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <AppText style={styles.sectionTitle}>
+                      Recent Searches
+                    </AppText>
+                    <View style={styles.sectionHeaderRight}>
+                      {recentSearches.length > 4 && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            setShowAllRecentSearches(!showAllRecentSearches)
+                          }
+                          style={styles.seeAllButton}
+                        >
+                          <AppText style={styles.seeAllText}>
+                            {showAllRecentSearches ? "Show Less" : "See All"}
+                          </AppText>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity onPress={clearRecentSearches}>
+                        <AppText style={styles.clearAllText}>Clear</AppText>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View style={styles.recentSearchesContainer}>
+                    {(showAllRecentSearches
+                      ? recentSearches
+                      : recentSearches.slice(0, 4)
+                    ).map((query, index) => renderRecentSearch(query, index))}
+                  </View>
+                </View>
+              )}
+
+              {showRecentSearches && showPopularMovies && (
+                <View style={styles.sectionDivider} />
+              )}
+
+              {showPopularMovies && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <AppText style={styles.sectionTitle}>
+                      Popular Movies
+                    </AppText>
+                    {popularMovies.length > 0 && (
+                      <AppText style={styles.sectionSubtitle}>
+                        {popularMovies.length} movies
+                      </AppText>
+                    )}
+                  </View>
+                  {loadingPopular ? (
+                    <View style={styles.popularMoviesGrid}>
+                      {Array.from({ length: 9 }).map((_, index) => (
+                        <MovieCardSkeleton
+                          key={index}
+                          width={POPULAR_CARD_WIDTH}
+                        />
+                      ))}
+                    </View>
+                  ) : error && !showSearchResults ? (
+                    <ErrorView message={error} onRetry={loadPopularMovies} />
+                  ) : popularMovies.length > 0 ? (
+                    <View style={styles.popularMoviesGrid}>
+                      {popularMovies.map((item, index) => {
+                        const key =
+                          item.tmdbId?.toString() ||
+                          item._id ||
+                          item.id?.toString() ||
+                          `popular-${index}`;
+                        return (
+                          <View key={key}>
+                            {renderMovie({
+                              item,
+                              cardWidth: POPULAR_CARD_WIDTH,
+                            })}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <View style={styles.emptyPopularContainer}>
+                      <AppText style={styles.emptyPopularText}>
+                        No popular movies available at the moment
+                      </AppText>
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </View>
@@ -1028,8 +1047,9 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#2a2a2a",
-    borderRadius: 20,
+    borderRadius: 15,
     borderWidth: 2,
     borderColor: "#333",
     marginBottom: 8,
@@ -1037,25 +1057,34 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 8,
     elevation: 2,
+    minHeight: 32, // Reduced from 44
   },
   searchIconContainer: {
     paddingLeft: 12,
     paddingRight: 6,
     justifyContent: "center",
     alignItems: "center",
+    height: 32, // Match search bar height
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 32, // Reduced from 40
     paddingRight: 12,
+    paddingVertical: 0, // Remove default padding to ensure proper centering
+    paddingTop: 3, // Explicitly set to 0 for Android
+    paddingBottom: 0, // Explicitly set to 0 for Android
     fontSize: 15,
     color: "#fff",
+    textAlignVertical: "center", // Center text vertically (Android)
+    includeFontPadding: false, // Remove extra padding (Android)
+    lineHeight: 15, // Match fontSize to prevent extra spacing
   },
   clearButton: {
     paddingRight: 14,
     paddingLeft: 8,
     justifyContent: "center",
     alignItems: "center",
+    height: 32, // Match search bar height
   },
   scrollView: {
     flex: 1,
@@ -1167,11 +1196,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#2a2a2a",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    // Glow effect for entire card (poster, title, rating)
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 4,
+    // Border for additional glow effect
+    borderWidth: 1,
+    borderColor: "rgba(0, 122, 255, 0.2)",
   },
   posterContainer: {
     position: "relative",
@@ -1181,6 +1214,12 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 0.75,
     backgroundColor: "#333",
+    // Glow effect for border
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   posterPlaceholder: {
     justifyContent: "center",

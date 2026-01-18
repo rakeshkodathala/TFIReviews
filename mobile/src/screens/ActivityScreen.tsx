@@ -164,6 +164,7 @@ const ActivityScreen: React.FC = () => {
               uri={movie.posterUrl}
               style={styles.moviePoster}
               placeholderColor="#333"
+              contentFit="cover"
             />
 
             {/* Content Section */}
@@ -369,6 +370,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#1a1a1a",
     borderBottomWidth: 1,
     borderBottomColor: "#333",
+    // Glow effect for entire card (poster, title, rating)
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
   },
   reviewContent: {
     padding: 14,
@@ -384,6 +391,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#333",
     marginRight: 12,
+    overflow: "hidden",
+    // Glow effect for border
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   posterPlaceholder: {
     justifyContent: "center",

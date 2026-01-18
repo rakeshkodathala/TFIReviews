@@ -241,8 +241,12 @@ const AccountScreen: React.FC = () => {
     value: string | number,
     color: string
   ) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <Ionicons name={icon as any} size={18} color={color} />
+    <View style={[styles.statCard, { borderTopColor: color }]}>
+      <View
+        style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}
+      >
+        <Ionicons name={icon as any} size={16} color={color} />
+      </View>
       <AppText style={styles.statValue}>{value}</AppText>
       <AppText style={styles.statLabel}>{label}</AppText>
     </View>
@@ -252,433 +256,451 @@ const AccountScreen: React.FC = () => {
     <View style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-        {showSuccessToast && (
-          <Animated.View
-            style={[
-              styles.toastContainer,
-              { transform: [{ translateY: toastAnimation }] },
-            ]}
+          {showSuccessToast && (
+            <Animated.View
+              style={[
+                styles.toastContainer,
+                { transform: [{ translateY: toastAnimation }] },
+              ]}
+            >
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <AppText style={styles.toastText}>
+                Profile updated successfully!
+              </AppText>
+            </Animated.View>
+          )}
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
           >
-            <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <AppText style={styles.toastText}>Profile updated successfully!</AppText>
-          </Animated.View>
-        )}
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            {/* Profile Header */}
-            <View style={styles.profileHeader}>
-              <View style={styles.avatarWrapper}>
-                <View style={styles.avatarContainer}>
-                  {avatar ? (
-                    <Image source={{ uri: avatar }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <AppText style={styles.avatarText}>
-                        {user?.username?.charAt(0).toUpperCase() || "U"}
-                      </AppText>
-                    </View>
-                  )}
-                  {editing && (
-                    <TouchableOpacity
-                      style={styles.editAvatarButton}
-                      onPress={pickImage}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="camera" size={16} color="#fff" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.userInfoContainer}>
-                <AppText style={styles.username}>{user?.username || "User"}</AppText>
-                <AppText style={styles.email}>{user?.email || ""}</AppText>
-                {stats && (
-                  <View style={styles.quickStats}>
-                    <View style={styles.quickStatItem}>
-                      <Ionicons
-                        name="document-text"
-                        size={14}
-                        color="#007AFF"
-                      />
-                      <AppText style={styles.quickStatText}>
-                        {stats.totalReviews} reviews
-                      </AppText>
-                    </View>
+            <View style={styles.content}>
+              {/* Profile Header */}
+              <View style={styles.profileHeader}>
+                <View style={styles.avatarWrapper}>
+                  <View style={styles.avatarContainer}>
+                    {avatar ? (
+                      <Image source={{ uri: avatar }} style={styles.avatar} />
+                    ) : (
+                      <View style={styles.avatarPlaceholder}>
+                        <AppText style={styles.avatarText}>
+                          {user?.username?.charAt(0).toUpperCase() || "U"}
+                        </AppText>
+                      </View>
+                    )}
+                    {editing && (
+                      <TouchableOpacity
+                        style={styles.editAvatarButton}
+                        onPress={pickImage}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="camera" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    )}
                   </View>
+                </View>
+
+                <View style={styles.userInfoContainer}>
+                  <AppText style={styles.username}>
+                    {user?.username || "User"}
+                  </AppText>
+                  <AppText style={styles.email}>{user?.email || ""}</AppText>
+                </View>
+
+                {!editing && (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={handleEdit}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="pencil" size={14} color="#007AFF" />
+                    <AppText style={styles.editButtonText}>
+                      Edit Profile
+                    </AppText>
+                  </TouchableOpacity>
                 )}
               </View>
 
+              {/* Activity & Stats Section */}
+              {!editing && stats && (
+                <View style={styles.section}>
+                  <AppText style={styles.sectionTitle}>
+                    Activity & Stats
+                  </AppText>
+                  <View style={styles.statsGrid}>
+                    {renderStatCard(
+                      "document-text",
+                      "Total Reviews",
+                      stats.totalReviews,
+                      "#007AFF"
+                    )}
+                    {renderStatCard(
+                      "calendar",
+                      "This Month",
+                      stats.reviewsThisMonth,
+                      "#4CAF50"
+                    )}
+                    {renderStatCard(
+                      "trophy",
+                      "Most Common",
+                      `${stats.mostCommonRating}/10`,
+                      "#FF6B6B"
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* My Content Section */}
               {!editing && (
+                <View style={styles.section}>
+                  <AppText style={styles.sectionTitle}>My Content</AppText>
+
+                  {/* My Reviews */}
+                  <TouchableOpacity
+                    style={styles.contentCard}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      navigation.navigate("MyReviews");
+                    }}
+                  >
+                    <View style={styles.contentCardHeader}>
+                      <View style={styles.contentCardLeft}>
+                        <View style={styles.contentIconContainer}>
+                          <Ionicons
+                            name="document-text-outline"
+                            size={20}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <View>
+                          <AppText style={styles.contentCardTitle}>
+                            My Reviews
+                          </AppText>
+                          <AppText style={styles.contentCardSubtitle}>
+                            {stats?.totalReviews || 0} total reviews
+                          </AppText>
+                        </View>
+                      </View>
+                      {recentReviews.length > 0 && (
+                        <View style={styles.badge}>
+                          <AppText style={styles.badgeText}>
+                            {recentReviews.length}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                    {recentReviews.length > 0 && (
+                      <View style={styles.reviewsPreview}>
+                        {recentReviews.slice(0, 3).map((review, index) => (
+                          <View key={index} style={styles.reviewPreviewItem}>
+                            {review.movieId?.posterUrl ? (
+                              <Image
+                                source={{ uri: review.movieId.posterUrl }}
+                                style={styles.reviewPreviewPoster}
+                              />
+                            ) : (
+                              <View style={styles.reviewPreviewPlaceholder}>
+                                <Ionicons
+                                  name="film-outline"
+                                  size={16}
+                                  color="#999"
+                                />
+                              </View>
+                            )}
+                            <View style={styles.reviewPreviewInfo}>
+                              <AppText
+                                style={styles.reviewPreviewTitle}
+                                numberOfLines={1}
+                              >
+                                {review.movieId?.title || "Unknown"}
+                              </AppText>
+                              <View style={styles.reviewPreviewRating}>
+                                <Ionicons
+                                  name="star"
+                                  size={12}
+                                  color="#FFD700"
+                                />
+                                <AppText style={styles.reviewPreviewRatingText}>
+                                  {review.rating}/10
+                                </AppText>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <View style={styles.contentCardFooter}>
+                      <AppText style={styles.viewAllText}>
+                        View All Reviews
+                      </AppText>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="#007AFF"
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Watchlist */}
+                  <TouchableOpacity
+                    style={styles.contentCard}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      navigation.navigate("Watchlist");
+                    }}
+                  >
+                    <View style={styles.contentCardHeader}>
+                      <View style={styles.contentCardLeft}>
+                        <View style={styles.contentIconContainer}>
+                          <Ionicons
+                            name="bookmark-outline"
+                            size={20}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <View>
+                          <AppText style={styles.contentCardTitle}>
+                            Watchlist
+                          </AppText>
+                          <AppText style={styles.contentCardSubtitle}>
+                            {watchlistLoading
+                              ? "Loading..."
+                              : `${watchlistCount} movies saved`}
+                          </AppText>
+                        </View>
+                      </View>
+                      {watchlistCount > 0 && (
+                        <View style={styles.badge}>
+                          <AppText style={styles.badgeText}>
+                            {watchlistCount}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.contentCardFooter}>
+                      <AppText style={styles.viewAllText}>
+                        Manage Watchlist
+                      </AppText>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="#007AFF"
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Profile Information Section */}
+              <View style={styles.section}>
+                <AppText style={styles.sectionTitle}>
+                  {editing ? "Edit Profile" : "Profile Information"}
+                </AppText>
+
+                <View style={styles.listContainer}>
+                  {/* Name Field */}
+                  <View style={[styles.listItem, styles.listItemFirst]}>
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="person-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <View style={styles.listItemContent}>
+                        <AppText style={styles.listItemLabel}>Name</AppText>
+                        {editing ? (
+                          <AppTextInput
+                            style={styles.listItemInput}
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="Enter your name"
+                            placeholderTextColor="#666"
+                          />
+                        ) : (
+                          <AppText style={styles.listItemValue}>
+                            {user?.name || (
+                              <AppText style={styles.emptyValue}>
+                                Not set
+                              </AppText>
+                            )}
+                          </AppText>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Location Field */}
+                  <View style={[styles.listItem, styles.listItemLast]}>
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="location-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <View style={styles.listItemContent}>
+                        <AppText style={styles.listItemLabel}>Location</AppText>
+                        {editing ? (
+                          <View style={styles.locationInputContainer}>
+                            <AppTextInput
+                              style={[
+                                styles.listItemInput,
+                                styles.locationInput,
+                              ]}
+                              value={location}
+                              onChangeText={setLocation}
+                              placeholder="Enter your location"
+                              placeholderTextColor="#666"
+                            />
+                            <TouchableOpacity
+                              style={styles.locationButton}
+                              onPress={pickLocation}
+                              disabled={loading}
+                              activeOpacity={0.7}
+                            >
+                              {loading ? (
+                                <ActivityIndicator
+                                  size="small"
+                                  color="#007AFF"
+                                />
+                              ) : (
+                                <Ionicons
+                                  name="locate"
+                                  size={18}
+                                  color="#007AFF"
+                                />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <AppText style={styles.listItemValue}>
+                            {user?.location || (
+                              <AppText style={styles.emptyValue}>
+                                Not set
+                              </AppText>
+                            )}
+                          </AppText>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Settings Section */}
+              {!editing && (
+                <View style={styles.section}>
+                  <AppText style={styles.sectionTitle}>Settings</AppText>
+
+                  <View style={styles.listContainer}>
+                    <TouchableOpacity
+                      style={[styles.listItem, styles.listItemFirst]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        navigation.navigate("Settings");
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.listIconContainer}>
+                          <Ionicons
+                            name="settings-outline"
+                            size={18}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <AppText style={styles.listItemValue}>
+                          App Settings
+                        </AppText>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.listItem}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        navigation.navigate("Notifications");
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.listIconContainer}>
+                          <Ionicons
+                            name="notifications-outline"
+                            size={18}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <AppText style={styles.listItemValue}>
+                          Notifications
+                        </AppText>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.listItem, styles.listItemLast]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        navigation.navigate("About");
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.listIconContainer}>
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={18}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <AppText style={styles.listItemValue}>About</AppText>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Action Buttons */}
+              {editing ? (
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.cancelButton]}
+                    onPress={handleCancel}
+                    disabled={loading}
+                    activeOpacity={0.7}
+                  >
+                    <AppText style={styles.cancelButtonText}>Cancel</AppText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.saveButton]}
+                    onPress={handleSave}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <View style={styles.saveButtonContent}>
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                        <AppText style={styles.saveButtonText}>Save</AppText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={handleEdit}
-                  activeOpacity={0.7}
+                  style={styles.logoutButton}
+                  onPress={handleLogout}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="pencil" size={14} color="#007AFF" />
-                  <AppText style={styles.editButtonText}>Edit Profile</AppText>
+                  <Ionicons name="log-out-outline" size={20} color="#fff" />
+                  <AppText style={styles.logoutButtonText}>Logout</AppText>
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Activity & Stats Section */}
-            {!editing && stats && (
-              <View style={styles.section}>
-                <AppText style={styles.sectionTitle}>Activity & Stats</AppText>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.statsScroll}
-                >
-                  {renderStatCard(
-                    "document-text",
-                    "Total Reviews",
-                    stats.totalReviews,
-                    "#007AFF"
-                  )}
-                  {renderStatCard(
-                    "calendar",
-                    "This Month",
-                    stats.reviewsThisMonth,
-                    "#4CAF50"
-                  )}
-                  {renderStatCard(
-                    "trophy",
-                    "Most Common",
-                    `${stats.mostCommonRating}/10`,
-                    "#FF6B6B"
-                  )}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* My Content Section */}
-            {!editing && (
-              <View style={styles.section}>
-                <AppText style={styles.sectionTitle}>My Content</AppText>
-
-                {/* My Reviews */}
-                <TouchableOpacity
-                  style={styles.contentCard}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    navigation.navigate("MyReviews");
-                  }}
-                >
-                  <View style={styles.contentCardHeader}>
-                    <View style={styles.contentCardLeft}>
-                      <View style={styles.contentIconContainer}>
-                        <Ionicons
-                          name="document-text-outline"
-                          size={20}
-                          color="#007AFF"
-                        />
-                      </View>
-                      <View>
-                        <AppText style={styles.contentCardTitle}>My Reviews</AppText>
-                        <AppText style={styles.contentCardSubtitle}>
-                          {stats?.totalReviews || 0} total reviews
-                        </AppText>
-                      </View>
-                    </View>
-                    {recentReviews.length > 0 && (
-                      <View style={styles.badge}>
-                        <AppText style={styles.badgeText}>
-                          {recentReviews.length}
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
-                  {recentReviews.length > 0 && (
-                    <View style={styles.reviewsPreview}>
-                      {recentReviews.slice(0, 3).map((review, index) => (
-                        <View key={index} style={styles.reviewPreviewItem}>
-                          {review.movieId?.posterUrl ? (
-                            <Image
-                              source={{ uri: review.movieId.posterUrl }}
-                              style={styles.reviewPreviewPoster}
-                            />
-                          ) : (
-                            <View style={styles.reviewPreviewPlaceholder}>
-                              <Ionicons
-                                name="film-outline"
-                                size={16}
-                                color="#999"
-                              />
-                            </View>
-                          )}
-                          <View style={styles.reviewPreviewInfo}>
-                            <AppText
-                              style={styles.reviewPreviewTitle}
-                              numberOfLines={1}
-                            >
-                              {review.movieId?.title || "Unknown"}
-                            </AppText>
-                            <View style={styles.reviewPreviewRating}>
-                              <Ionicons name="star" size={12} color="#FFD700" />
-                              <AppText style={styles.reviewPreviewRatingText}>
-                                {review.rating}/10
-                              </AppText>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                  <View style={styles.contentCardFooter}>
-                    <AppText style={styles.viewAllText}>View All Reviews</AppText>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color="#007AFF"
-                    />
-                  </View>
-                </TouchableOpacity>
-
-                {/* Watchlist */}
-                <TouchableOpacity
-                  style={styles.contentCard}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    navigation.navigate("Watchlist");
-                  }}
-                >
-                  <View style={styles.contentCardHeader}>
-                    <View style={styles.contentCardLeft}>
-                      <View style={styles.contentIconContainer}>
-                        <Ionicons
-                          name="bookmark-outline"
-                          size={20}
-                          color="#007AFF"
-                        />
-                      </View>
-                      <View>
-                        <AppText style={styles.contentCardTitle}>Watchlist</AppText>
-                        <AppText style={styles.contentCardSubtitle}>
-                          {watchlistLoading
-                            ? "Loading..."
-                            : `${watchlistCount} movies saved`}
-                        </AppText>
-                      </View>
-                    </View>
-                    {watchlistCount > 0 && (
-                      <View style={styles.badge}>
-                        <AppText style={styles.badgeText}>{watchlistCount}</AppText>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.contentCardFooter}>
-                    <AppText style={styles.viewAllText}>Manage Watchlist</AppText>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color="#007AFF"
-                    />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Profile Information Section */}
-            <View style={styles.section}>
-              <AppText style={styles.sectionTitle}>
-                {editing ? "Edit Profile" : "Profile Information"}
-              </AppText>
-
-              <View style={styles.listContainer}>
-                {/* Name Field */}
-                <View style={[styles.listItem, styles.listItemFirst]}>
-                  <View style={styles.listItemLeft}>
-                    <View style={styles.listIconContainer}>
-                      <Ionicons
-                        name="person-outline"
-                        size={18}
-                        color="#007AFF"
-                      />
-                    </View>
-                    <View style={styles.listItemContent}>
-                      <AppText style={styles.listItemLabel}>Name</AppText>
-                      {editing ? (
-                        <AppTextInput
-                          style={styles.listItemInput}
-                          value={name}
-                          onChangeText={setName}
-                          placeholder="Enter your name"
-                          placeholderTextColor="#666"
-                        />
-                      ) : (
-                        <AppText style={styles.listItemValue}>
-                          {user?.name || (
-                            <AppText style={styles.emptyValue}>Not set</AppText>
-                          )}
-                        </AppText>
-                      )}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Location Field */}
-                <View style={[styles.listItem, styles.listItemLast]}>
-                  <View style={styles.listItemLeft}>
-                    <View style={styles.listIconContainer}>
-                      <Ionicons
-                        name="location-outline"
-                        size={18}
-                        color="#007AFF"
-                      />
-                    </View>
-                    <View style={styles.listItemContent}>
-                      <AppText style={styles.listItemLabel}>Location</AppText>
-                      {editing ? (
-                        <View style={styles.locationInputContainer}>
-                          <AppTextInput
-                            style={[styles.listItemInput, styles.locationInput]}
-                            value={location}
-                            onChangeText={setLocation}
-                            placeholder="Enter your location"
-                            placeholderTextColor="#666"
-                          />
-                          <TouchableOpacity
-                            style={styles.locationButton}
-                            onPress={pickLocation}
-                            disabled={loading}
-                            activeOpacity={0.7}
-                          >
-                            {loading ? (
-                              <ActivityIndicator size="small" color="#007AFF" />
-                            ) : (
-                              <Ionicons
-                                name="locate"
-                                size={18}
-                                color="#007AFF"
-                              />
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <AppText style={styles.listItemValue}>
-                          {user?.location || (
-                            <AppText style={styles.emptyValue}>Not set</AppText>
-                          )}
-                        </AppText>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Settings Section */}
-            {!editing && (
-              <View style={styles.section}>
-                <AppText style={styles.sectionTitle}>Settings</AppText>
-
-                <View style={styles.listContainer}>
-                  <TouchableOpacity
-                    style={[styles.listItem, styles.listItemFirst]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      navigation.navigate("Settings");
-                    }}
-                  >
-                    <View style={styles.listItemLeft}>
-                      <View style={styles.listIconContainer}>
-                        <Ionicons
-                          name="settings-outline"
-                          size={18}
-                          color="#007AFF"
-                        />
-                      </View>
-                      <AppText style={styles.listItemValue}>App Settings</AppText>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#666" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.listItem}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      navigation.navigate("Notifications");
-                    }}
-                  >
-                    <View style={styles.listItemLeft}>
-                      <View style={styles.listIconContainer}>
-                        <Ionicons
-                          name="notifications-outline"
-                          size={18}
-                          color="#007AFF"
-                        />
-                      </View>
-                      <AppText style={styles.listItemValue}>Notifications</AppText>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#666" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.listItem, styles.listItemLast]}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      navigation.navigate("About");
-                    }}
-                  >
-                    <View style={styles.listItemLeft}>
-                      <View style={styles.listIconContainer}>
-                        <Ionicons
-                          name="information-circle-outline"
-                          size={18}
-                          color="#007AFF"
-                        />
-                      </View>
-                      <AppText style={styles.listItemValue}>About</AppText>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#666" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Action Buttons */}
-            {editing ? (
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={handleCancel}
-                  disabled={loading}
-                  activeOpacity={0.7}
-                >
-                  <AppText style={styles.cancelButtonText}>Cancel</AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.saveButton]}
-                  onPress={handleSave}
-                  disabled={loading}
-                  activeOpacity={0.8}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <View style={styles.saveButtonContent}>
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                      <AppText style={styles.saveButtonText}>Save</AppText>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.logoutButton}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-out-outline" size={20} color="#fff" />
-                <AppText style={styles.logoutButtonText}>Logout</AppText>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
+          </ScrollView>
         </View>
       </TouchableWithoutFeedback>
     </View>
@@ -725,9 +747,9 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
-    paddingTop: 12,
-    paddingBottom: 20,
-    marginBottom: 20,
+    paddingTop: 0,
+    paddingBottom: 12,
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#2a2a2a",
   },
@@ -852,29 +874,44 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 2,
   },
-  statsScroll: {
-    paddingRight: 16,
-    gap: 12,
+  statsGrid: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
   },
   statCard: {
-    width: 100,
+    flex: 1,
     backgroundColor: "#2a2a2a",
-    borderRadius: 12,
-    padding: 12,
-    borderLeftWidth: 3,
-    marginRight: 8,
+    borderRadius: 10,
+    padding: 10,
+    borderTopWidth: 2,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#fff",
-    marginTop: 6,
-    marginBottom: 3,
+    marginBottom: 2,
+    textAlign: "center",
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#999",
     fontWeight: "500",
+    textAlign: "center",
   },
   contentCard: {
     backgroundColor: "#2a2a2a",

@@ -359,6 +359,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#2a2a2a',
     marginBottom: 12,
+    // Glow effect for border
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   moviePosterPlaceholder: {
     width: 140,

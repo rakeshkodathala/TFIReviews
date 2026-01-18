@@ -151,6 +151,7 @@ const HomeStack = () => {
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
           headerBackTitle: "",
+          headerBackTitleVisible: false,
           gestureEnabled: true,
         }}
       />
@@ -208,6 +209,7 @@ const SearchStack = () => {
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
           headerBackTitle: "",
+          headerBackTitleVisible: false,
           gestureEnabled: true,
         }}
       />
@@ -265,6 +267,7 @@ const ActivityStack = () => {
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
           headerBackTitle: "",
+          headerBackTitleVisible: false,
           gestureEnabled: true,
         }}
       />
@@ -320,6 +323,8 @@ const AccountStack = () => {
           title: "Write a Review",
           headerStyle: { backgroundColor: "#1a1a1a" },
           headerTintColor: "#fff",
+          headerBackTitle: "",
+          headerBackTitleVisible: false,
           gestureEnabled: true,
         }}
       />

@@ -44,14 +44,15 @@ interface TrendingTabProps {
 const calculateTrendingScore = (movie: Movie): number => {
   const popularity = movie.popularity || 0;
   const rating = movie.rating || 0;
-  
+
   // Check if movie is recent (last 30 days gets boost)
   let recentBoost = 0;
   if (movie.releaseDate) {
     const releaseDate = new Date(movie.releaseDate);
     const now = new Date();
-    const daysSinceRelease = (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceRelease =
+      (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24);
+
     if (daysSinceRelease <= 7) {
       recentBoost = 1.0; // Full boost for last 7 days
     } else if (daysSinceRelease <= 30) {
@@ -60,17 +61,15 @@ const calculateTrendingScore = (movie: Movie): number => {
       recentBoost = 0.3; // Lower boost for 30-60 days
     }
   }
-  
+
   // Normalize values (popularity can be high, rating is 0-10)
   const normalizedPopularity = Math.min(popularity / 100, 1); // Cap at 100
   const normalizedRating = rating / 10;
-  
+
   // Weighted formula
   const score =
-    normalizedPopularity * 0.5 +
-    recentBoost * 0.3 +
-    normalizedRating * 0.2;
-  
+    normalizedPopularity * 0.5 + recentBoost * 0.3 + normalizedRating * 0.2;
+
   return score;
 };
 
@@ -90,8 +89,9 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
     if (!movie.releaseDate) return null;
     const releaseDate = new Date(movie.releaseDate);
     const now = new Date();
-    const daysSinceRelease = (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceRelease =
+      (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24);
+
     if (daysSinceRelease <= 7) {
       return { label: "New", icon: "sparkles", color: "#4CAF50" };
     }
@@ -135,7 +135,7 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
       if (recentMovies.length < 20) {
         const sixtyDaysAgo = new Date();
         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-        
+
         recentMovies = allMovies
           .filter((movie) => {
             if (!movie.releaseDate) return false;
@@ -149,7 +149,10 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
           .slice(0, Math.max(20, recentMovies.length)); // Take at least 20, or more if available
       } else {
         // If we have enough, just take top 20+ (show all if less than 30, otherwise top 30)
-        recentMovies = recentMovies.slice(0, Math.max(20, Math.min(30, recentMovies.length)));
+        recentMovies = recentMovies.slice(
+          0,
+          Math.max(20, Math.min(30, recentMovies.length))
+        );
       }
 
       setPopularThisMonth(recentMovies);
@@ -196,7 +199,9 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
             placeholderColor="#333"
           />
           {badge && (
-            <View style={[styles.trendingBadge, { backgroundColor: badge.color }]}>
+            <View
+              style={[styles.trendingBadge, { backgroundColor: badge.color }]}
+            >
               <Ionicons name={badge.icon as any} size={10} color="#fff" />
               <AppText style={styles.trendingBadgeText}>{badge.label}</AppText>
             </View>
@@ -365,11 +370,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "#2a2a2a",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    // Glow effect for entire card (poster, title, rating)
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 4,
+    // Border for additional glow effect
+    borderWidth: 1,
+    borderColor: "rgba(0, 122, 255, 0.2)",
   },
   posterContainer: {
     position: "relative",
@@ -379,6 +388,12 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 0.75,
     backgroundColor: "#333",
+    // Glow effect for border
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   posterPlaceholder: {
     justifyContent: "center",

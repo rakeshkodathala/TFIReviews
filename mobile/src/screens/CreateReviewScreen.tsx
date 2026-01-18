@@ -187,7 +187,7 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
             >
               <Ionicons
                 name={rating >= value ? 'star' : 'star-outline'}
-                size={32}
+                size={26}
                 color={rating >= value ? getRatingColor(rating) : '#666'}
               />
             </TouchableOpacity>
@@ -437,14 +437,16 @@ const styles = StyleSheet.create({
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 4,
+    alignItems: 'center',
+    gap: 2,
   },
   starButton: {
     flex: 1,
-    aspectRatio: 1,
+    minWidth: 0,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 4,
+    paddingHorizontal: 2,
   },
   reviewSection: {
     marginBottom: 24,

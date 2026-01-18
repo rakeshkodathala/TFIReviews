@@ -269,7 +269,13 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "rgba(0, 122, 255, 0.2)",
+    // Glow effect for entire card (poster, title, rating)
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   reviewHeader: {
     flexDirection: "row",
@@ -281,6 +287,12 @@ const styles = StyleSheet.create({
     height: 67,
     borderRadius: 8,
     backgroundColor: "#333",
+    // Glow effect for border
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   posterPlaceholder: {
     justifyContent: "center",

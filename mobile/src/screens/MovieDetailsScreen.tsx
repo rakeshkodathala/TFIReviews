@@ -11,7 +11,11 @@ import {
   Animated,
   Share,
   Platform,
+  Linking,
+  Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import { AppText } from '../components/Typography';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -37,6 +41,8 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [watchlistId, setWatchlistId] = useState<string | null>(null);
+  const [trailerModalVisible, setTrailerModalVisible] = useState(false);
+  const [trailerVideoId, setTrailerVideoId] = useState<string | null>(null);
   const { isAuthenticated, user } = useAuth();
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -201,6 +207,48 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
     }
   };
 
+  const extractYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    // Handle direct video ID (11 characters)
+    if (url.length === 11 && /^[a-zA-Z0-9_-]+$/.test(url)) {
+      return url;
+    }
+    // Handle YouTube URLs
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
+  const handlePlayTrailer = () => {
+    // Try to get trailer from various sources
+    let trailerKey: string | null = null;
+    
+    // First, check if we have a direct trailer URL
+    if (movie.trailerUrl) {
+      const extractedId = extractYouTubeVideoId(movie.trailerUrl);
+      if (extractedId) {
+        trailerKey = extractedId;
+      }
+    }
+    
+    // If not found, check videos array from TMDB
+    if (!trailerKey && movie.videos?.results) {
+      const trailer = movie.videos.results.find((v: any) => 
+        v.type === 'Trailer' && v.site === 'YouTube'
+      );
+      if (trailer?.key) {
+        trailerKey = trailer.key;
+      }
+    }
+    
+    if (trailerKey) {
+      setTrailerVideoId(trailerKey);
+      setTrailerModalVisible(true);
+    } else {
+      Alert.alert('No Trailer', 'Trailer is not available for this movie.');
+    }
+  };
+
   const getRatingColor = (rating: number) => {
     if (rating >= 8) return '#4CAF50'; // Green
     if (rating >= 6) return '#FFC107'; // Yellow
@@ -218,7 +266,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
 
   // Calculate average rating from reviews
   const communityRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+    ? reviews.reduce((sum, r) => {
+        const rating = typeof r.rating === 'number' ? r.rating : 0;
+        return sum + rating;
+      }, 0) / reviews.length
     : 0;
 
   // Sort reviews
@@ -229,12 +280,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
     return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
-  // Get top review (highest rated)
-  const topReview = sortedReviews.length > 0 && reviewSort === 'recent'
-    ? sortedReviews.reduce((top, current) => 
-        (current.rating || 0) > (top.rating || 0) ? current : top
-      )
-    : null;
+  // Top review removed - no longer needed
 
   // Get backdrop URL
   const backdropUrl = movie.backdrop_path
@@ -319,8 +365,12 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             )}
           </Animated.View>
           
-          {/* Gradient Overlay */}
-          <View style={styles.gradientOverlay} />
+          {/* Gradient Overlay - Letterboxd style blending shade */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.8)', 'rgba(0, 0, 0, 0.95)']}
+            locations={[0, 0.2, 0.4, 0.65, 1]}
+            style={styles.gradientOverlay}
+          />
           
           {/* Hero Content */}
           <Animated.View
@@ -412,33 +462,43 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
             { opacity: fadeAnim },
           ]}
         >
-          {/* Watchlist Button */}
-          {isAuthenticated && (
-            <TouchableOpacity
-              style={[
-                styles.watchlistButton,
-                isInWatchlist && styles.watchlistButtonActive,
-              ]}
-              onPress={handleToggleWatchlist}
-              disabled={watchlistLoading}
-              activeOpacity={0.8}
-            >
-              {watchlistLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
+          {/* Action Buttons Row */}
+          <View style={styles.actionButtonsRow}>
+            {/* Trailer Button */}
+            {(movie.trailerUrl || movie.videos?.results?.some((v: any) => v.type === 'Trailer' && v.site === 'YouTube')) && (
+              <TouchableOpacity
+                style={styles.trailerButton}
+                onPress={handlePlayTrailer}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="play-circle" size={24} color="#fff" />
+                <AppText style={styles.trailerButtonText}>Trailer</AppText>
+              </TouchableOpacity>
+            )}
+            
+            {/* Watchlist Button */}
+            {isAuthenticated && (
+              <TouchableOpacity
+                style={[
+                  styles.watchlistButtonCompact,
+                  isInWatchlist && styles.watchlistButtonActive,
+                ]}
+                onPress={handleToggleWatchlist}
+                disabled={watchlistLoading}
+                activeOpacity={0.8}
+              >
+                {watchlistLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
                   <Ionicons
                     name={isInWatchlist ? "bookmark" : "bookmark-outline"}
-                    size={20}
+                    size={22}
                     color="#fff"
                   />
-                  <AppText style={styles.watchlistButtonText}>
-                    {isInWatchlist ? "In Watchlist" : "Add to Watchlist"}
-                  </AppText>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Primary CTA - Write Review */}
           {!userReview && (
@@ -464,29 +524,30 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
 
           {/* Your Rating Card - Personal Connection */}
           {userReview && (
-            <View style={styles.ratingCard}>
-              <View style={styles.ratingCardHeader}>
-                <View style={styles.ratingCardTitleRow}>
-                  <Ionicons name="star" size={20} color="#FFD700" />
-                  <AppText style={styles.ratingCardTitle}>Your Rating</AppText>
-                </View>
+            <TouchableOpacity
+              style={styles.yourRatingCard}
+              onPress={handleWriteReview}
+              activeOpacity={0.7}
+            >
+              <View style={styles.yourRatingHeader}>
+                <AppText style={styles.yourRatingTitle}>Your Rating</AppText>
                 <TouchableOpacity onPress={handleWriteReview}>
-                  <AppText style={styles.editButtonText}>Edit</AppText>
+                  <AppText style={styles.yourRatingEditText}>Edit</AppText>
                 </TouchableOpacity>
               </View>
-              <View style={styles.ratingCardContent}>
+              <View style={styles.yourRatingBody}>
                 <View
                   style={[
-                    styles.yourRatingBadge,
+                    styles.yourRatingBadgeCompact,
                     { borderColor: getRatingColor(userReview.rating) },
                   ]}
                 >
-                  <AppText style={styles.yourRatingNumber}>
+                  <AppText style={styles.yourRatingNumberCompact}>
                     {userReview.rating}/10
                   </AppText>
                 </View>
-                <View style={styles.ratingCardInfo}>
-                  <AppText style={styles.ratingCardMessage}>
+                <View style={styles.yourRatingInfo}>
+                  <AppText style={styles.yourRatingMessage}>
                     {userReview.rating >= 8
                       ? "You loved this! 🎬"
                       : userReview.rating >= 6
@@ -494,94 +555,47 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                       : "You didn't enjoy this"}
                   </AppText>
                   {userReview.review && (
-                    <AppText style={styles.ratingCardSnippet} numberOfLines={2}>
+                    <AppText style={styles.yourRatingSnippet} numberOfLines={2}>
                       "{userReview.review}"
                     </AppText>
                   )}
-                  <TouchableOpacity
-                    style={styles.viewFullReviewButton}
-                    onPress={handleWriteReview}
-                  >
-                    <AppText style={styles.viewFullReviewText}>View Full Review</AppText>
-                  </TouchableOpacity>
                 </View>
+                <TouchableOpacity
+                  style={styles.yourRatingViewButtonRight}
+                  onPress={handleWriteReview}
+                >
+                  <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+                </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* Community Rating Card - Social Proof */}
-          {reviews.length > 0 && (
-            <View style={styles.ratingCard}>
-              <View style={styles.ratingCardTitleRow}>
-                <Ionicons name="people" size={20} color="#007AFF" />
-                <AppText style={styles.ratingCardTitle}>Community Rating</AppText>
+          {reviews.length > 0 && !isNaN(communityRating) && communityRating > 0 && (
+            <View style={styles.communityRatingCard}>
+              <View style={styles.communityRatingHeader}>
+                <View style={styles.communityRatingTitleRow}>
+                  <Ionicons name="people" size={18} color="#007AFF" />
+                  <AppText style={styles.communityRatingTitle}>Community Rating</AppText>
+                </View>
               </View>
-              <View style={styles.ratingCardContent}>
-                <View style={styles.communityRatingBadge}>
-                  <AppText style={styles.communityRatingNumber}>
+              <View style={styles.communityRatingBody}>
+                <View style={styles.communityRatingBadgeCompact}>
+                  <AppText style={styles.communityRatingNumberCompact}>
                     {communityRating.toFixed(1)}
                   </AppText>
-                  <AppText style={styles.communityRatingLabel}>/10</AppText>
+                  <AppText style={styles.communityRatingLabelCompact}>/10</AppText>
                 </View>
-                <View style={styles.ratingCardInfo}>
-                  <AppText style={styles.ratingCardMessage}>
+                <View style={styles.communityRatingInfo}>
+                  <AppText style={styles.communityRatingMessage}>
                     from {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
                   </AppText>
                   {movie.totalReviews && movie.totalReviews > reviews.length && (
-                    <AppText style={styles.ratingCardSubtext}>
+                    <AppText style={styles.communityRatingSubtext}>
                       {movie.totalReviews} total reviews
                     </AppText>
                   )}
                 </View>
-              </View>
-            </View>
-          )}
-
-          {/* Top Review Highlight - Engagement Hook */}
-          {topReview && topReview._id !== userReview?._id && (
-            <View style={styles.highlightCard}>
-              <View style={styles.highlightHeader}>
-                <Ionicons name="trophy" size={18} color="#FFD700" />
-                <AppText style={styles.highlightTitle}>Most Helpful Review</AppText>
-              </View>
-              <View style={styles.highlightContent}>
-                <View style={styles.highlightAuthor}>
-                  {topReview.userId?.avatar ? (
-                    <Image
-                      source={{ uri: topReview.userId.avatar }}
-                      style={styles.highlightAvatar}
-                    />
-                  ) : (
-                    <View style={styles.highlightAvatarPlaceholder}>
-                      <Ionicons name="person" size={16} color="#666" />
-                    </View>
-                  )}
-                  <View>
-                    <AppText style={styles.highlightAuthorName}>
-                      {topReview.userId?.username || 'Anonymous'}
-                    </AppText>
-                    <View
-                      style={[
-                        styles.highlightRating,
-                        { backgroundColor: `${getRatingColor(topReview.rating)}20` },
-                      ]}
-                    >
-                      <AppText
-                        style={[
-                          styles.highlightRatingText,
-                          { color: getRatingColor(topReview.rating) },
-                        ]}
-                      >
-                        {topReview.rating}/10
-                      </AppText>
-                    </View>
-                  </View>
-                </View>
-                {topReview.review && (
-                  <AppText style={styles.highlightText} numberOfLines={3}>
-                    "{topReview.review}"
-                  </AppText>
-                )}
               </View>
             </View>
           )}
@@ -855,6 +869,38 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
           <AppText style={styles.floatingButtonText}>Rate It</AppText>
         </TouchableOpacity>
       )}
+
+      {/* Trailer Modal */}
+      <Modal
+        visible={trailerModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setTrailerModalVisible(false)}
+      >
+        <View style={styles.trailerModalContainer}>
+          <View style={styles.trailerModalHeader}>
+            <AppText style={styles.trailerModalTitle}>Trailer</AppText>
+            <TouchableOpacity
+              style={styles.trailerModalCloseButton}
+              onPress={() => setTrailerModalVisible(false)}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          {trailerVideoId && (
+            <YoutubePlayer
+              height={300}
+              videoId={trailerVideoId}
+              play={true}
+              onChangeState={(state) => {
+                if (state === 'ended') {
+                  setTrailerModalVisible(false);
+                }
+              }}
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -925,8 +971,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    height: '85%',
   },
   heroContent: {
     flex: 1,
@@ -963,6 +1008,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginTop: 'auto',
+    paddingBottom: 8,
   },
   poster: {
     width: 120,
@@ -970,10 +1016,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 16,
     backgroundColor: '#2a2a2a',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    // Glow effect for border
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
     elevation: 8,
   },
   heroInfo: {
@@ -989,13 +1036,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 30,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    marginBottom: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    letterSpacing: 0.2,
+    lineHeight: 36,
   },
   heroRatingBadge: {
     width: 70,
@@ -1022,23 +1071,25 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   titleTelugu: {
-    fontSize: 18,
-    color: '#ccc',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    fontWeight: '500',
   },
   heroMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   heroMetaText: {
-    fontSize: 15,
-    color: '#ccc',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    fontWeight: '500',
   },
   ratingBadgeContainer: {
     alignItems: 'center',
@@ -1079,6 +1130,46 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 0,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  trailerButton: {
+    flex: 1,
+    backgroundColor: '#E50914',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#E50914',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  trailerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  watchlistButtonCompact: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#333',
+  },
+  watchlistButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
   watchlistButton: {
     backgroundColor: '#2a2a2a',
     borderRadius: 12,
@@ -1091,14 +1182,36 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#333',
   },
-  watchlistButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
   watchlistButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  trailerModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  trailerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  trailerModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  trailerModalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryCTA: {
     backgroundColor: '#007AFF',
@@ -1141,6 +1254,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333',
   },
+  yourRatingCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  yourRatingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  yourRatingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  yourRatingEditText: {
+    fontSize: 13,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
   ratingCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1167,6 +1304,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
+  yourRatingBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  yourRatingBadgeCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2.5,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  yourRatingNumberCompact: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
   yourRatingBadge: {
     width: 70,
     height: 70,
@@ -1180,6 +1337,91 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  yourRatingInfo: {
+    flex: 1,
+  },
+  yourRatingMessage: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  yourRatingSnippet: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 6,
+    lineHeight: 16,
+  },
+  yourRatingViewButton: {
+    marginTop: 4,
+  },
+  yourRatingViewText: {
+    fontSize: 13,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  yourRatingViewButtonRight: {
+    marginLeft: 'auto',
+    padding: 4,
+  },
+  communityRatingCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  communityRatingHeader: {
+    marginBottom: 12,
+  },
+  communityRatingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  communityRatingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  communityRatingBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  communityRatingBadgeCompact: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexShrink: 0,
+  },
+  communityRatingNumberCompact: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  communityRatingLabelCompact: {
+    fontSize: 14,
+    color: '#999',
+    marginLeft: 2,
+    fontWeight: '500',
+  },
+  communityRatingInfo: {
+    flex: 1,
+  },
+  communityRatingMessage: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  communityRatingSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
   },
   communityRatingBadge: {
     flexDirection: 'row',
@@ -1557,6 +1799,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  trailerModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  trailerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  trailerModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  trailerModalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
