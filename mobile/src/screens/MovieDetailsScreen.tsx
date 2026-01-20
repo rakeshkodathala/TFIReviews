@@ -16,11 +16,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import YoutubePlayer from 'react-native-youtube-iframe';
-import { AppText } from '../components/Typography';
+import { AppText, AppTextInput } from '../components/Typography';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { movieSearchService, reviewsService, watchlistService } from '../services/api';
+import { movieSearchService, reviewsService, watchlistService, commentsService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HomeStackParamList } from '../navigation/AppNavigator';
 
@@ -43,6 +43,10 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const [watchlistId, setWatchlistId] = useState<string | null>(null);
   const [trailerModalVisible, setTrailerModalVisible] = useState(false);
   const [trailerVideoId, setTrailerVideoId] = useState<string | null>(null);
+  const [comments, setComments] = useState<{ [reviewId: string]: any[] }>({});
+  const [commentInputs, setCommentInputs] = useState<{ [reviewId: string]: string }>({});
+  const [showComments, setShowComments] = useState<{ [reviewId: string]: boolean }>({});
+  const [commentLoading, setCommentLoading] = useState<{ [reviewId: string]: boolean }>({});
   const { isAuthenticated, isGuest, user } = useAuth();
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -262,6 +266,77 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
     } catch (error) {
       console.error('Error checking watchlist status:', error);
     }
+  };
+
+  const loadComments = async (reviewId: string) => {
+    try {
+      setCommentLoading((prev) => ({ ...prev, [reviewId]: true }));
+      const response = await commentsService.getByReview(reviewId, { page: 1, limit: 10 });
+      setComments((prev) => ({ ...prev, [reviewId]: response.comments || [] }));
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setCommentLoading((prev) => ({ ...prev, [reviewId]: false }));
+    }
+  };
+
+  const handleCreateComment = async (reviewId: string) => {
+    const commentText = commentInputs[reviewId]?.trim();
+    if (!commentText || commentText.length === 0) {
+      Alert.alert('Error', 'Please enter a comment');
+      return;
+    }
+
+    if (!isAuthenticated || isGuest) {
+      Alert.alert('Login Required', 'Please login to comment on reviews');
+      return;
+    }
+
+    try {
+      const response = await commentsService.create(reviewId, commentText);
+      setComments((prev) => ({
+        ...prev,
+        [reviewId]: [response.comment, ...(prev[reviewId] || [])],
+      }));
+      setCommentInputs((prev) => ({ ...prev, [reviewId]: '' }));
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'Failed to post comment');
+    }
+  };
+
+  const handleDeleteComment = async (reviewId: string, commentId: string) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await commentsService.delete(commentId);
+              setComments((prev) => ({
+                ...prev,
+                [reviewId]: (prev[reviewId] || []).filter((c: any) => c.id !== commentId),
+              }));
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.error || 'Failed to delete comment');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleComments = (reviewId: string) => {
+    setShowComments((prev) => {
+      const isShowing = prev[reviewId];
+      if (!isShowing && !comments[reviewId]) {
+        loadComments(reviewId);
+      }
+      return { ...prev, [reviewId]: !isShowing };
+    });
   };
 
   const handleToggleWatchlist = async () => {
@@ -1046,7 +1121,102 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           {review.likes || 0}
                         </AppText>
                       </TouchableOpacity>
+                      
+                      {/* Comments Button */}
+                      <TouchableOpacity
+                        style={styles.commentButton}
+                        onPress={() => toggleComments(review._id || review.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="chatbubble-outline" size={18} color="#999" />
+                        <AppText style={styles.commentButtonText}>
+                          {comments[review._id || review.id]?.length || 0}
+                        </AppText>
+                      </TouchableOpacity>
                     </View>
+
+                    {/* Comments Section */}
+                    {showComments[review._id || review.id] && (
+                      <View style={styles.commentsSection}>
+                        {/* Comment Input */}
+                        {isAuthenticated && !isGuest && (
+                          <View style={styles.commentInputContainer}>
+                            <AppTextInput
+                              style={styles.commentInput}
+                              placeholder="Write a comment..."
+                              placeholderTextColor="#666"
+                              value={commentInputs[review._id || review.id] || ''}
+                              onChangeText={(text) =>
+                                setCommentInputs((prev) => ({
+                                  ...prev,
+                                  [review._id || review.id]: text,
+                                }))
+                              }
+                              multiline
+                              maxLength={1000}
+                            />
+                            <TouchableOpacity
+                              style={[
+                                styles.commentSubmitButton,
+                                (!commentInputs[review._id || review.id]?.trim() ||
+                                  commentLoading[review._id || review.id]) &&
+                                  styles.commentSubmitButtonDisabled,
+                              ]}
+                              onPress={() => handleCreateComment(review._id || review.id)}
+                              disabled={
+                                !commentInputs[review._id || review.id]?.trim() ||
+                                commentLoading[review._id || review.id]
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="send" size={16} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {/* Comments List */}
+                        {commentLoading[review._id || review.id] ? (
+                          <ActivityIndicator size="small" color="#007AFF" style={styles.commentLoading} />
+                        ) : (
+                          <>
+                            {(comments[review._id || review.id] || []).map((comment: any) => {
+                              const commentUserId = comment.user?._id || comment.user?.id;
+                              const currentUserId = user?._id || user?.id;
+                              const isOwnComment = commentUserId === currentUserId;
+                              return (
+                                <View key={comment.id} style={styles.commentItem}>
+                                  <View style={styles.commentHeader}>
+                                    <AppText style={styles.commentAuthor}>
+                                      {comment.user?.username || 'Anonymous'}
+                                    </AppText>
+                                    {isOwnComment && (
+                                      <TouchableOpacity
+                                        onPress={() => handleDeleteComment(review._id || review.id, comment.id)}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Ionicons name="trash-outline" size={14} color="#d32f2f" />
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                  <AppText style={styles.commentText}>{comment.comment}</AppText>
+                                  {comment.createdAt && (
+                                    <AppText style={styles.commentDate}>
+                                      {new Date(comment.createdAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })}
+                                    </AppText>
+                                  )}
+                                </View>
+                              );
+                            })}
+                            {(!comments[review._id || review.id] || comments[review._id || review.id].length === 0) && (
+                              <AppText style={styles.noCommentsText}>No comments yet</AppText>
+                            )}
+                          </>
+                        )}
+                      </View>
+                    )}
                   </View>
                 );
               })
@@ -2006,6 +2176,91 @@ const styles = StyleSheet.create({
   },
   likeButtonTextActive: {
     color: '#FF3B30',
+  },
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+    marginLeft: 8,
+  },
+  commentButtonText: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
+  },
+  commentsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 14,
+    maxHeight: 100,
+  },
+  commentSubmitButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentSubmitButtonDisabled: {
+    opacity: 0.5,
+  },
+  commentItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#ccc',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  commentDate: {
+    fontSize: 11,
+    color: '#666',
+  },
+  commentLoading: {
+    marginVertical: 12,
+  },
+  noCommentsText: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 12,
   },
   floatingButton: {
     position: 'absolute',

@@ -117,6 +117,43 @@ export const authService = {
     });
     return response.data;
   },
+
+  async deleteAccount(password: string) {
+    const response = await apiClient.delete('/auth/account', {
+      data: { password },
+    });
+    return response.data;
+  },
+
+  async exportData() {
+    const response = await apiClient.get('/auth/export', {
+      responseType: 'blob', // Important for file download
+    });
+    return response.data;
+  },
+};
+
+// Comments Service
+export const commentsService = {
+  async getByReview(reviewId: string, params?: { page?: number; limit?: number }) {
+    const response = await apiClient.get(`/reviews/${reviewId}/comments`, { params });
+    return response.data;
+  },
+
+  async create(reviewId: string, comment: string) {
+    const response = await apiClient.post(`/reviews/${reviewId}/comments`, { comment });
+    return response.data;
+  },
+
+  async update(commentId: string, comment: string) {
+    const response = await apiClient.put(`/reviews/comments/${commentId}`, { comment });
+    return response.data;
+  },
+
+  async delete(commentId: string) {
+    const response = await apiClient.delete(`/reviews/comments/${commentId}`);
+    return response.data;
+  },
 };
 
 // Watchlist Service
@@ -286,6 +323,79 @@ export const usersService = {
 
   async unfollow(userId: string) {
     const response = await apiClient.delete(`/users/${userId}/follow`);
+    return response.data;
+  },
+
+  async getSettings(userId: string) {
+    const response = await apiClient.get(`/users/${userId}/settings`);
+    return response.data;
+  },
+
+  async updateSettings(userId: string, settings: {
+    darkMode?: boolean;
+    autoPlayTrailers?: boolean;
+    reviewNotifications?: boolean;
+    newMovieNotifications?: boolean;
+    watchlistNotifications?: boolean;
+    weeklyDigest?: boolean;
+    profilePublic?: boolean;
+    watchlistPublic?: boolean;
+    showEmail?: boolean;
+  }) {
+    const response = await apiClient.put(`/users/${userId}/settings`, settings);
+    return response.data;
+  },
+};
+
+// Notifications Service
+export const notificationsService = {
+  async getAll(params?: { page?: number; limit?: number; unreadOnly?: boolean }) {
+    const response = await apiClient.get('/notifications', { params });
+    return response.data;
+  },
+
+  async getPreferences() {
+    const response = await apiClient.get('/notifications/preferences');
+    return response.data;
+  },
+
+  async updatePreferences(preferences: {
+    reviewNotifications?: boolean;
+    newMovieNotifications?: boolean;
+    watchlistNotifications?: boolean;
+    weeklyDigest?: boolean;
+  }) {
+    const response = await apiClient.post('/notifications/preferences', preferences);
+    return response.data;
+  },
+
+  async markAsRead(notificationId: string) {
+    const response = await apiClient.put(`/notifications/${notificationId}/read`);
+    return response.data;
+  },
+
+  async markAllAsRead() {
+    const response = await apiClient.put('/notifications/read-all');
+    return response.data;
+  },
+
+  async delete(notificationId: string) {
+    const response = await apiClient.delete(`/notifications/${notificationId}`);
+    return response.data;
+  },
+
+  async registerToken(token: string, platform: 'ios' | 'android' | 'web', deviceId?: string, appVersion?: string) {
+    const response = await apiClient.post('/notifications/register-token', {
+      token,
+      platform,
+      deviceId,
+      appVersion,
+    });
+    return response.data;
+  },
+
+  async unregisterToken(token: string) {
+    const response = await apiClient.delete(`/notifications/register-token/${token}`);
     return response.data;
   },
 };

@@ -34,6 +34,19 @@ const userSchema = new Schema<IUser>(
       type: String,
       trim: true,
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+    },
+    isDeactivated: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

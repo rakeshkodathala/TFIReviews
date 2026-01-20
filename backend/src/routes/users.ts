@@ -1,9 +1,10 @@
 import express, { Router, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import User from '../models/User';
 import Follow from '../models/Follow';
+import UserSettings from '../models/UserSettings';
 import { AuthRequest } from '../types';
 import { authenticate } from '../middleware/auth';
+import { notifyNewFollower } from '../services/notificationService';
 
 const router: Router = express.Router();
 
@@ -185,6 +186,16 @@ router.post('/:id/follow', authenticate, async (req: AuthRequest, res: Response)
     const followerCount = await Follow.countDocuments({ followingId: targetUserId });
     const followingCount = await Follow.countDocuments({ followerId: userId });
 
+    // Send notification to user being followed
+    const follower = await User.findById(userId).select('username').lean();
+    if (follower) {
+      notifyNewFollower(
+        targetUserId,
+        follower.username || 'Someone',
+        userId
+      ).catch((err) => console.error('Error sending follow notification:', err));
+    }
+
     res.json({
       message: 'Successfully followed user',
       isFollowing: true,
@@ -231,6 +242,91 @@ router.delete('/:id/follow', authenticate, async (req: AuthRequest, res: Respons
       isFollowing: false,
       followerCount,
       followingCount,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user settings
+router.get('/:id/settings', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const targetUserId = req.params.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Users can only access their own settings
+    if (userId !== targetUserId) {
+      return res.status(403).json({ error: 'You can only access your own settings' });
+    }
+
+    // Find or create default settings
+    let settings = await UserSettings.findOne({ userId }).lean();
+    if (!settings) {
+      // Create default settings
+      const defaultSettings = new UserSettings({ userId });
+      await defaultSettings.save();
+      settings = defaultSettings.toObject() as any;
+    }
+
+    res.json(settings);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user settings
+router.put('/:id/settings', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const targetUserId = req.params.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Users can only update their own settings
+    if (userId !== targetUserId) {
+      return res.status(403).json({ error: 'You can only update your own settings' });
+    }
+
+    const {
+      darkMode,
+      autoPlayTrailers,
+      reviewNotifications,
+      newMovieNotifications,
+      watchlistNotifications,
+      weeklyDigest,
+      profilePublic,
+      watchlistPublic,
+      showEmail,
+    } = req.body;
+
+    // Find or create settings
+    let settings = await UserSettings.findOne({ userId });
+    if (!settings) {
+      settings = new UserSettings({ userId });
+    }
+
+    // Update fields if provided
+    if (typeof darkMode === 'boolean') settings.darkMode = darkMode;
+    if (typeof autoPlayTrailers === 'boolean') settings.autoPlayTrailers = autoPlayTrailers;
+    if (typeof reviewNotifications === 'boolean') settings.reviewNotifications = reviewNotifications;
+    if (typeof newMovieNotifications === 'boolean') settings.newMovieNotifications = newMovieNotifications;
+    if (typeof watchlistNotifications === 'boolean') settings.watchlistNotifications = watchlistNotifications;
+    if (typeof weeklyDigest === 'boolean') settings.weeklyDigest = weeklyDigest;
+    if (typeof profilePublic === 'boolean') settings.profilePublic = profilePublic;
+    if (typeof watchlistPublic === 'boolean') settings.watchlistPublic = watchlistPublic;
+    if (typeof showEmail === 'boolean') settings.showEmail = showEmail;
+
+    await settings.save();
+
+    res.json({
+      message: 'Settings updated successfully',
+      settings: settings.toObject(),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

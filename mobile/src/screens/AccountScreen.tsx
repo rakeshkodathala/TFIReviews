@@ -15,12 +15,13 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from "react-native";
 import { AppText, AppTextInput } from "../components/Typography";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
-import { authService, watchlistService, usersService } from "../services/api";
+import { authService, watchlistService, usersService, notificationsService } from "../services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -49,6 +50,7 @@ const AccountScreen: React.FC = () => {
   const [name, setName] = useState(user?.name || "");
   const [location, setLocation] = useState(user?.location || "");
   const [avatar, setAvatar] = useState(user?.avatar || "");
+  const [bio, setBio] = useState(user?.bio || "");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastAnimation] = useState(new Animated.Value(-80));
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -63,6 +65,18 @@ const AccountScreen: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  
+  // Account Deletion States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Data Export States
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // Notification Badge State
+  const [notificationBadgeCount, setNotificationBadgeCount] = useState(0);
 
   // Redirect guests to login
   useFocusEffect(
@@ -82,18 +96,20 @@ const AccountScreen: React.FC = () => {
         );
         return;
       }
-      loadStats();
-      loadRecentReviews();
-      loadWatchlistCount();
-      loadFollowCounts();
-    }, [isAuthenticated, isGuest])
-  );
+          loadStats();
+          loadRecentReviews();
+          loadWatchlistCount();
+          loadFollowCounts();
+          loadNotificationBadge();
+        }, [isAuthenticated, isGuest])
+      );
 
   useEffect(() => {
     if (user) {
       setName(user.name || "");
       setLocation(user.location || "");
       setAvatar(user.avatar || "");
+      setBio(user.bio || "");
     }
   }, [user]);
 
@@ -153,6 +169,19 @@ const AccountScreen: React.FC = () => {
     }
   };
 
+  const loadNotificationBadge = async () => {
+    if (!isAuthenticated || isGuest) {
+      setNotificationBadgeCount(0);
+      return;
+    }
+    try {
+      const response = await notificationsService.getAll({ page: 1, limit: 1, unreadOnly: true });
+      setNotificationBadgeCount(response.unreadCount || 0);
+    } catch (error) {
+      console.error("Error loading notification badge:", error);
+    }
+  };
+
   const loadWatchlistCount = async () => {
     try {
       setWatchlistLoading(true);
@@ -170,6 +199,7 @@ const AccountScreen: React.FC = () => {
     setName(user?.name || "");
     setLocation(user?.location || "");
     setAvatar(user?.avatar || "");
+    setBio(user?.bio || "");
   };
 
   const handleCancel = () => {
@@ -177,12 +207,18 @@ const AccountScreen: React.FC = () => {
     setName(user?.name || "");
     setLocation(user?.location || "");
     setAvatar(user?.avatar || "");
+    setBio(user?.bio || "");
   };
 
   const handleSave = async () => {
+    if (bio && bio.length > 500) {
+      Alert.alert("Error", "Bio must be less than 500 characters.");
+      return;
+    }
+    
     try {
       setLoading(true);
-      await updateUser({ name, avatar, location });
+      await updateUser({ name, avatar, location, bio });
       setEditing(false);
       setShowSuccessToast(true);
     } catch (error: any) {
@@ -264,6 +300,87 @@ const AccountScreen: React.FC = () => {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      Alert.alert("Error", "Please enter your password to confirm account deletion.");
+      return;
+    }
+
+    if (deleteConfirmText !== "DELETE") {
+      Alert.alert("Error", 'Please type "DELETE" to confirm account deletion.');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await authService.deleteAccount(deletePassword);
+      Alert.alert(
+        "Account Deletion Initiated",
+        "Your account deletion has been initiated. Your account will be permanently deleted in 30 days. You can contact support to cancel this action.",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              await logout();
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error.response?.data?.error || "Failed to delete account"
+      );
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setDeletePassword("");
+      setDeleteConfirmText("");
+    }
+  };
+
+  const handleExportData = async () => {
+    Alert.alert(
+      "Export My Data",
+      "This will download a JSON file containing all your account data including reviews, watchlist, followers, and more.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Export",
+          onPress: async () => {
+            setExportLoading(true);
+            try {
+              const blob = await authService.exportData();
+              
+              // Convert blob to text
+              const text = await blob.text();
+              const data = JSON.parse(text);
+              
+              // Format JSON with indentation
+              const formattedJson = JSON.stringify(data, null, 2);
+              
+              // Share the JSON file
+              await Share.share({
+                message: formattedJson,
+                title: `TFI Reviews Export - ${user?.username || 'data'}`,
+              });
+              
+              Alert.alert("Success", "Your data has been exported successfully!");
+            } catch (error: any) {
+              console.error("Export error:", error);
+              Alert.alert(
+                "Error",
+                error.response?.data?.error || "Failed to export data. Please try again."
+              );
+            } finally {
+              setExportLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleChangePassword = async () => {
@@ -654,6 +771,45 @@ const AccountScreen: React.FC = () => {
                     </View>
                   </View>
 
+                  {/* Bio Field */}
+                  <View style={styles.listItem}>
+                    <View style={styles.listItemLeft}>
+                      <View style={styles.listIconContainer}>
+                        <Ionicons
+                          name="document-text-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </View>
+                      <View style={styles.listItemContent}>
+                        <AppText style={styles.listItemLabel}>
+                          Bio {editing && `(${bio.length}/500)`}
+                        </AppText>
+                        {editing ? (
+                          <AppTextInput
+                            style={[styles.listItemInput, styles.bioInput]}
+                            value={bio}
+                            onChangeText={setBio}
+                            placeholder="Tell us about yourself (max 500 characters)"
+                            placeholderTextColor="#666"
+                            multiline
+                            numberOfLines={4}
+                            maxLength={500}
+                            textAlignVertical="top"
+                          />
+                        ) : (
+                          <AppText style={styles.listItemValue}>
+                            {user?.bio || (
+                              <AppText style={styles.emptyValue}>
+                                Not set
+                              </AppText>
+                            )}
+                          </AppText>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
                   {/* Location Field */}
                   <View style={[styles.listItem, styles.listItemLast]}>
                     <View style={styles.listItemLeft}>
@@ -720,7 +876,7 @@ const AccountScreen: React.FC = () => {
 
                   <View style={styles.listContainer}>
                     <TouchableOpacity
-                      style={[styles.listItem, styles.listItemFirst, styles.listItemLast]}
+                      style={[styles.listItem, styles.listItemFirst]}
                       activeOpacity={0.7}
                       onPress={() => {
                         console.log('Change Password pressed');
@@ -740,6 +896,31 @@ const AccountScreen: React.FC = () => {
                         </AppText>
                       </View>
                       <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.listItem, styles.listItemLast]}
+                      activeOpacity={0.7}
+                      onPress={handleExportData}
+                      disabled={exportLoading}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.listIconContainer}>
+                          <Ionicons
+                            name="download-outline"
+                            size={18}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <AppText style={styles.listItemValue}>
+                          Export My Data
+                        </AppText>
+                      </View>
+                      {exportLoading ? (
+                        <ActivityIndicator size="small" color="#007AFF" />
+                      ) : (
+                        <Ionicons name="chevron-forward" size={18} color="#666" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -777,7 +958,7 @@ const AccountScreen: React.FC = () => {
                       style={styles.listItem}
                       activeOpacity={0.7}
                       onPress={() => {
-                        navigation.navigate("Notifications");
+                        navigation.navigate("NotificationFeed");
                       }}
                     >
                       <View style={styles.listItemLeft}>
@@ -787,6 +968,13 @@ const AccountScreen: React.FC = () => {
                             size={18}
                             color="#007AFF"
                           />
+                          {notificationBadgeCount > 0 && (
+                            <View style={styles.notificationBadgeContainer}>
+                              <AppText style={styles.notificationBadgeText}>
+                                {notificationBadgeCount > 99 ? '99+' : notificationBadgeCount}
+                              </AppText>
+                            </View>
+                          )}
                         </View>
                         <AppText style={styles.listItemValue}>
                           Notifications
@@ -846,14 +1034,31 @@ const AccountScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <TouchableOpacity
-                  style={styles.logoutButton}
-                  onPress={handleLogout}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="log-out-outline" size={20} color="#fff" />
-                  <AppText style={styles.logoutButtonText}>Logout</AppText>
-                </TouchableOpacity>
+                <>
+                  {/* Danger Zone */}
+                  <View style={styles.section}>
+                    <AppText style={styles.dangerZoneTitle}>Danger Zone</AppText>
+                    <TouchableOpacity
+                      style={styles.deleteAccountButton}
+                      onPress={() => setShowDeleteModal(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#fff" />
+                      <AppText style={styles.deleteAccountButtonText}>
+                        Delete Account
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="log-out-outline" size={20} color="#fff" />
+                    <AppText style={styles.logoutButtonText}>Logout</AppText>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           </ScrollView>
@@ -960,6 +1165,127 @@ const AccountScreen: React.FC = () => {
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
                         <AppText style={styles.modalButtonText}>Change Password</AppText>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowDeleteModal(false);
+          setDeletePassword("");
+          setDeleteConfirmText("");
+        }}
+        statusBarTranslucent={true}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            setShowDeleteModal(false);
+            setDeletePassword("");
+            setDeleteConfirmText("");
+          }}>
+            <View style={styles.modalOverlayInner}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <AppText style={styles.modalTitle}>Delete Account</AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowDeleteModal(false);
+                        setDeletePassword("");
+                        setDeleteConfirmText("");
+                      }}
+                      style={styles.modalCloseButton}
+                    >
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView
+                    style={styles.modalBody}
+                    contentContainerStyle={styles.modalBodyContent}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.warningContainer}>
+                      <Ionicons name="warning" size={48} color="#d32f2f" />
+                      <AppText style={styles.warningTitle}>
+                        This action cannot be undone
+                      </AppText>
+                      <AppText style={styles.warningText}>
+                        Deleting your account will permanently remove:
+                      </AppText>
+                      <View style={styles.warningList}>
+                        <AppText style={styles.warningListItem}>• All your reviews</AppText>
+                        <AppText style={styles.warningListItem}>• Your watchlist</AppText>
+                        <AppText style={styles.warningListItem}>• Your followers and following</AppText>
+                        <AppText style={styles.warningListItem}>• All your data</AppText>
+                      </View>
+                      <AppText style={styles.warningNote}>
+                        Your account will be permanently deleted in 30 days. You can contact support to cancel this action.
+                      </AppText>
+                    </View>
+
+                    <View style={styles.passwordInputContainer}>
+                      <AppText style={styles.passwordLabel}>Enter Your Password</AppText>
+                      <AppTextInput
+                        style={styles.passwordInput}
+                        value={deletePassword}
+                        onChangeText={setDeletePassword}
+                        placeholder="Enter your password to confirm"
+                        placeholderTextColor="#666"
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </View>
+
+                    <View style={styles.passwordInputContainer}>
+                      <AppText style={styles.passwordLabel}>
+                        Type "DELETE" to confirm
+                      </AppText>
+                      <AppTextInput
+                        style={[
+                          styles.passwordInput,
+                          deleteConfirmText !== "DELETE" && deleteConfirmText.length > 0 && styles.passwordInputError,
+                        ]}
+                        value={deleteConfirmText}
+                        onChangeText={setDeleteConfirmText}
+                        placeholder="Type DELETE"
+                        placeholderTextColor="#666"
+                        autoCapitalize="characters"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.modalButton,
+                        styles.deleteButton,
+                        (deleteLoading || deletePassword.length === 0 || deleteConfirmText !== "DELETE") && styles.modalButtonDisabled,
+                      ]}
+                      onPress={handleDeleteAccount}
+                      disabled={deleteLoading || deletePassword.length === 0 || deleteConfirmText !== "DELETE"}
+                      activeOpacity={0.8}
+                    >
+                      {deleteLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <AppText style={styles.modalButtonText}>Delete Account</AppText>
                       )}
                     </TouchableOpacity>
                   </ScrollView>
@@ -1366,6 +1692,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF15",
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
   },
   listItemContent: {
     flex: 1,
@@ -1626,6 +1953,104 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  dangerZoneTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#d32f2f",
+    letterSpacing: 0.2,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  deleteAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#d32f2f",
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: "#d32f2f",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  deleteAccountButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  warningContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: "rgba(211, 47, 47, 0.1)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(211, 47, 47, 0.3)",
+  },
+  warningTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#d32f2f",
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  warningText: {
+    fontSize: 14,
+    color: "#fff",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  warningList: {
+    alignSelf: "stretch",
+    marginBottom: 12,
+  },
+  warningListItem: {
+    fontSize: 13,
+    color: "#fff",
+    marginBottom: 4,
+    paddingLeft: 8,
+  },
+  warningNote: {
+    fontSize: 12,
+    color: "#999",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#d32f2f",
+  },
+  passwordInputError: {
+    borderColor: "#d32f2f",
+  },
+  bioInput: {
+    minHeight: 80,
+    maxHeight: 120,
+    paddingTop: 10,
+  },
+  notificationBadgeContainer: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#FF3B30",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "#1a1a1a",
+  },
+  notificationBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
   },
 });
 

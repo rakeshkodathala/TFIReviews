@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -6,14 +6,122 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  ActivityIndicator,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
+import { usersService } from "../services/api";
+import { useFocusEffect } from "@react-navigation/native";
+
+const SETTINGS_STORAGE_KEY = "@tfireviews:settings";
+
+interface UserSettings {
+  darkMode: boolean;
+  autoPlayTrailers: boolean;
+  reviewNotifications: boolean;
+  newMovieNotifications: boolean;
+  watchlistNotifications: boolean;
+  weeklyDigest: boolean;
+  profilePublic: boolean;
+  watchlistPublic: boolean;
+  showEmail: boolean;
+}
 
 const SettingsScreen: React.FC = () => {
-  const [darkMode, setDarkMode] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [autoPlay, setAutoPlay] = useState(false);
+  const { user, isAuthenticated, isGuest } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<UserSettings>({
+    darkMode: true,
+    autoPlayTrailers: false,
+    reviewNotifications: true,
+    newMovieNotifications: true,
+    watchlistNotifications: false,
+    weeklyDigest: true,
+    profilePublic: true,
+    watchlistPublic: true,
+    showEmail: false,
+  });
+
+  // Load settings from AsyncStorage and backend
+  const loadSettings = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // First, try to load from AsyncStorage (for offline access)
+      const storedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (storedSettings) {
+        const parsed = JSON.parse(storedSettings);
+        setSettings(parsed);
+      }
+
+      // Then, sync with backend if authenticated
+      if (isAuthenticated && !isGuest && user?.id) {
+        try {
+          const backendSettings = await usersService.getSettings(user.id);
+          if (backendSettings) {
+            setSettings(backendSettings);
+            // Update AsyncStorage with backend data
+            await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(backendSettings));
+          }
+        } catch (error) {
+          console.error("Error loading settings from backend:", error);
+          // Continue with AsyncStorage settings if backend fails
+        }
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, isGuest, user?.id]);
+
+  // Save settings to AsyncStorage and backend
+  const saveSettings = async (newSettings: Partial<UserSettings>) => {
+    try {
+      setSaving(true);
+      const updatedSettings = { ...settings, ...newSettings };
+      setSettings(updatedSettings);
+
+      // Save to AsyncStorage immediately (for offline access)
+      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettings));
+
+      // Sync with backend if authenticated
+      if (isAuthenticated && !isGuest && user?.id) {
+        try {
+          await usersService.updateSettings(user.id, newSettings);
+        } catch (error: any) {
+          console.error("Error saving settings to backend:", error);
+          Alert.alert(
+            "Warning",
+            "Settings saved locally but couldn't sync with server. They will sync when you're online."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      Alert.alert("Error", "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Load settings when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [loadSettings])
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContainer]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -29,9 +137,18 @@ const SettingsScreen: React.FC = () => {
                 </View>
                 <View style={styles.listItemContent}>
                   <AppText style={styles.listItemLabel}>Dark Mode</AppText>
-                  <AppText style={styles.listItemValue}>Always on</AppText>
+                  <AppText style={styles.listItemValue}>
+                    {settings.darkMode ? "Enabled" : "Disabled"}
+                  </AppText>
                 </View>
               </View>
+              <Switch
+                value={settings.darkMode}
+                onValueChange={(value) => saveSettings({ darkMode: value })}
+                trackColor={{ false: "#333", true: "#007AFF" }}
+                thumbColor="#fff"
+                disabled={saving}
+              />
             </View>
           </View>
         </View>
@@ -53,10 +170,11 @@ const SettingsScreen: React.FC = () => {
                 </View>
               </View>
               <Switch
-                value={autoPlay}
-                onValueChange={setAutoPlay}
+                value={settings.autoPlayTrailers}
+                onValueChange={(value) => saveSettings({ autoPlayTrailers: value })}
                 trackColor={{ false: "#333", true: "#007AFF" }}
                 thumbColor="#fff"
+                disabled={saving}
               />
             </View>
           </View>
@@ -208,6 +326,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#999",
     fontWeight: "500",
+  },
+  centerContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

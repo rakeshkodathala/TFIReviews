@@ -23,6 +23,18 @@
     "android": {
       "package": "com.tfireviews.app",
       "versionCode": 1,
+      "targetSdkVersion": 34,
+      "compileSdkVersion": 34,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1a1a"
@@ -34,7 +46,28 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to set your profile picture.",
+          "cameraPermission": "The app needs access to your camera to take a profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "The app uses your location to set your profile location."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#007AFF",
+          "sounds": []
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "http://10.0.0.244:3000/api",

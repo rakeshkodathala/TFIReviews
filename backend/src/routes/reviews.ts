@@ -2,10 +2,13 @@ import express, { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Review from '../models/Review';
 import ReviewLike from '../models/ReviewLike';
+import Comment from '../models/Comment';
 import Movie from '../models/Movie';
+import User from '../models/User';
 import movieApiService from '../services/movieApi';
 import { IReview, IMovie, AuthRequest } from '../types';
 import { authenticate } from '../middleware/auth';
+import { notifyReviewComment, notifyReviewLike } from '../services/notificationService';
 
 const router: Router = express.Router();
 
@@ -464,6 +467,21 @@ router.post('/:id/like', authenticate, async (req: AuthRequest, res: Response) =
     // Get updated like count
     const likeCount = await ReviewLike.countDocuments({ reviewId });
 
+    // Send notification to review owner (if not the same user)
+    const reviewOwnerId = review.userId.toString();
+    if (reviewOwnerId !== userId) {
+      const liker = await User.findById(userId).select('username').lean();
+      const movie = await Movie.findById(review.movieId).select('title').lean();
+      if (liker) {
+        notifyReviewLike(
+          reviewOwnerId,
+          liker.username || 'Someone',
+          reviewId,
+          movie?.title
+        ).catch((err) => console.error('Error sending like notification:', err));
+      }
+    }
+
     res.json({
       message: 'Review liked successfully',
       likes: likeCount,
@@ -540,6 +558,198 @@ router.get('/:id/likes', async (req: Request, res: Response) => {
       })),
       count: likes.length,
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get comments for a review
+router.get('/:id/comments', async (req: Request<{ id: string }, {}, {}, { page?: string; limit?: string }>, res: Response) => {
+  try {
+    const reviewId = req.params.id;
+    const { page = '1', limit = '20' } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Check if review exists
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    const comments = await Comment.find({ reviewId })
+      .populate('userId', 'username name avatar')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('-__v')
+      .lean();
+
+    const total = await Comment.countDocuments({ reviewId });
+
+    res.json({
+      comments: comments.map((comment: any) => ({
+        id: comment._id.toString(),
+        reviewId: comment.reviewId.toString(),
+        user: comment.userId,
+        comment: comment.comment,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a comment on a review
+router.post('/:id/comments', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const reviewId = req.params.id;
+    const { comment } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+
+    if (comment.length > 1000) {
+      return res.status(400).json({ error: 'Comment must be less than 1000 characters' });
+    }
+
+    // Check if review exists
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    const newComment = new Comment({
+      reviewId,
+      userId,
+      comment: comment.trim(),
+    });
+    await newComment.save();
+
+    const populatedComment = await Comment.findById(newComment._id)
+      .populate('userId', 'username name avatar')
+      .select('-__v')
+      .lean();
+
+    // Send notification to review owner (if not the same user)
+    const reviewOwnerId = review.userId.toString();
+    if (reviewOwnerId !== userId) {
+      const commenter = await User.findById(userId).select('username').lean();
+      const movie = await Movie.findById(review.movieId).select('title').lean();
+      if (commenter) {
+        notifyReviewComment(
+          reviewOwnerId,
+          commenter.username || 'Someone',
+          reviewId,
+          populatedComment!._id.toString(),
+          movie?.title
+        ).catch((err) => console.error('Error sending comment notification:', err));
+      }
+    }
+
+    res.status(201).json({
+      comment: {
+        id: populatedComment!._id.toString(),
+        reviewId: populatedComment!.reviewId.toString(),
+        user: populatedComment!.userId,
+        comment: populatedComment!.comment,
+        createdAt: populatedComment!.createdAt,
+        updatedAt: populatedComment!.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a comment
+router.put('/comments/:commentId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const commentId = req.params.commentId;
+    const { comment } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment text is required' });
+    }
+
+    if (comment.length > 1000) {
+      return res.status(400).json({ error: 'Comment must be less than 1000 characters' });
+    }
+
+    // Find comment and verify ownership
+    const existingComment = await Comment.findById(commentId);
+    if (!existingComment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (existingComment.userId.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only edit your own comments' });
+    }
+
+    existingComment.comment = comment.trim();
+    await existingComment.save();
+
+    const populatedComment = await Comment.findById(commentId)
+      .populate('userId', 'username name avatar')
+      .select('-__v')
+      .lean();
+
+    res.json({
+      comment: {
+        id: populatedComment!._id.toString(),
+        reviewId: populatedComment!.reviewId.toString(),
+        user: populatedComment!.userId,
+        comment: populatedComment!.comment,
+        createdAt: populatedComment!.createdAt,
+        updatedAt: populatedComment!.updatedAt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a comment
+router.delete('/comments/:commentId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const commentId = req.params.commentId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Find comment and verify ownership
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.userId.toString() !== userId) {
+      return res.status(403).json({ error: 'You can only delete your own comments' });
+    }
+
+    await Comment.findByIdAndDelete(commentId);
+
+    res.json({ message: 'Comment deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

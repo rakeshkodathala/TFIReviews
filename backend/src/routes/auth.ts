@@ -3,6 +3,9 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import Review from '../models/Review';
 import PasswordReset from '../models/PasswordReset';
+import Follow from '../models/Follow';
+import ReviewLike from '../models/ReviewLike';
+import Watchlist from '../models/Watchlist';
 import { IUser, AuthRequest } from '../types';
 import { authenticate } from '../middleware/auth';
 import { sendOTPEmail } from '../services/emailService';
@@ -170,17 +173,22 @@ router.get('/verify', async (req: Request, res: Response) => {
 // Update user profile
 router.put('/profile', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, avatar, location } = req.body;
+    const { name, avatar, location, bio } = req.body;
     const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    if (bio !== undefined && bio.length > 500) {
+      return res.status(400).json({ error: 'Bio must be less than 500 characters' });
+    }
+
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (avatar !== undefined) updateData.avatar = avatar;
     if (location !== undefined) updateData.location = location;
+    if (bio !== undefined) updateData.bio = bio;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -200,6 +208,7 @@ router.put('/profile', authenticate, async (req: AuthRequest, res: Response) => 
         name: user.name,
         avatar: user.avatar,
         location: user.location,
+        bio: (user as any).bio,
       },
     });
   } catch (error: any) {
@@ -451,6 +460,223 @@ router.post('/reset-password', async (req: Request<{}, {}, { email: string; otp:
     await passwordReset.save();
 
     res.json({ message: 'Password reset successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete account
+router.delete('/account', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { password } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required to delete account' });
+    }
+
+    // Get user with password
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Soft delete user (30-day grace period)
+    (user as any).isDeactivated = true;
+    (user as any).deletedAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+    await user.save();
+
+    // Cascade delete related data
+    // 1. Delete all reviews
+    await Review.deleteMany({ userId });
+
+    // 2. Delete watchlist items
+    await Watchlist.deleteMany({ userId });
+
+    // 3. Delete follow relationships (both as follower and following)
+    await Follow.deleteMany({ followerId: userId });
+    await Follow.deleteMany({ followingId: userId });
+
+    // 4. Delete review likes
+    await ReviewLike.deleteMany({ userId });
+
+    // 5. Delete password reset entries
+    await PasswordReset.deleteMany({ email: user.email });
+
+    // Send confirmation email (optional, but good practice)
+    try {
+      // In production, send email confirmation
+      if (process.env.NODE_ENV === 'production') {
+        // TODO: Send account deletion confirmation email
+        console.log(`Account deletion requested for ${user.email}`);
+      }
+    } catch (emailError) {
+      // Don't fail if email fails
+      console.error('Error sending deletion email:', emailError);
+    }
+
+    res.json({
+      message: 'Account deletion initiated. Your account will be permanently deleted in 30 days. You can contact support to cancel this action.',
+      deletedAt: (user as any).deletedAt,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export user data (GDPR compliance)
+router.get('/export', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Get user profile (excluding password)
+    const user = await User.findById(userId)
+      .select('-password -__v')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get all reviews
+    const reviews = await Review.find({ userId })
+      .populate('movieId', 'title posterUrl tmdbId releaseDate')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+
+    // Get watchlist
+    const watchlist = await Watchlist.find({ userId })
+      .populate('movieId', 'title posterUrl tmdbId releaseDate')
+      .sort({ addedAt: -1 })
+      .select('-__v')
+      .lean();
+
+    // Get followers
+    const followers = await Follow.find({ followingId: userId })
+      .populate('followerId', 'username name avatar')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+
+    // Get following
+    const following = await Follow.find({ followerId: userId })
+      .populate('followingId', 'username name avatar')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+
+    // Get review likes (reviews liked by user)
+    const reviewLikes = await ReviewLike.find({ userId })
+      .populate('reviewId', 'rating title review')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+
+    // Get stats
+    const totalReviews = reviews.length;
+    const avgRating = reviews.length > 0
+      ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+      : 0;
+
+    // Compile export data
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        location: user.location,
+        createdAt: user.createdAt,
+        updatedAt: (user as any).updatedAt,
+      },
+      statistics: {
+        totalReviews,
+        avgRating: Math.round(avgRating * 10) / 10,
+        watchlistCount: watchlist.length,
+        followersCount: followers.length,
+        followingCount: following.length,
+        reviewLikesCount: reviewLikes.length,
+      },
+      reviews: reviews.map((review: any) => ({
+        id: review._id.toString(),
+        movie: review.movieId ? {
+          id: review.movieId._id?.toString(),
+          title: review.movieId.title,
+          posterUrl: review.movieId.posterUrl,
+          tmdbId: review.movieId.tmdbId,
+          releaseDate: review.movieId.releaseDate,
+        } : null,
+        rating: review.rating,
+        title: review.title,
+        review: review.review,
+        likes: review.likes || 0,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+      })),
+      watchlist: watchlist.map((item: any) => ({
+        id: item._id.toString(),
+        movie: item.movieId ? {
+          id: item.movieId._id?.toString(),
+          title: item.movieId.title,
+          posterUrl: item.movieId.posterUrl,
+          tmdbId: item.movieId.tmdbId,
+          releaseDate: item.movieId.releaseDate,
+        } : {
+          tmdbId: item.tmdbId,
+        },
+        addedAt: item.addedAt,
+      })),
+      followers: followers.map((follow: any) => ({
+        user: {
+          id: follow.followerId._id?.toString(),
+          username: follow.followerId.username,
+          name: follow.followerId.name,
+          avatar: follow.followerId.avatar,
+        },
+        followedAt: follow.createdAt,
+      })),
+      following: following.map((follow: any) => ({
+        user: {
+          id: follow.followingId._id?.toString(),
+          username: follow.followingId.username,
+          name: follow.followingId.name,
+          avatar: follow.followingId.avatar,
+        },
+        followedAt: follow.createdAt,
+      })),
+      reviewLikes: reviewLikes.map((like: any) => ({
+        reviewId: like.reviewId._id?.toString(),
+        review: like.reviewId ? {
+          rating: like.reviewId.rating,
+          title: like.reviewId.title,
+          review: like.reviewId.review,
+        } : null,
+        likedAt: like.createdAt,
+      })),
+    };
+
+    // Set headers for JSON download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="tfireviews-export-${user.username}-${Date.now()}.json"`);
+
+    res.json(exportData);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

@@ -2,19 +2,20 @@ import { Document } from 'mongoose';
 import { Request } from 'express';
 
 export interface IUser extends Document {
-  _id: string;
   username: string;
   email: string;
   password: string;
   name?: string;
   avatar?: string;
   location?: string;
+  bio?: string;
+  isDeactivated?: boolean;
+  deletedAt?: Date | null;
   createdAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 export interface IMovie extends Document {
-  _id: string;
   title: string;
   titleTelugu?: string;
   director: string;
@@ -33,7 +34,6 @@ export interface IMovie extends Document {
 }
 
 export interface IReview extends Document {
-  _id: string;
   movieId: string;
   userId: string;
   rating: number;

@@ -12,9 +12,29 @@ import {
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { usePushNotifications } from "./src/hooks/usePushNotifications";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+function AppContent() {
+  // Initialize push notifications
+  usePushNotifications();
+
+  return (
+    <>
+      <StatusBar style="light" />
+      {Platform.OS === "android" && (
+        <RNStatusBar
+          barStyle="light-content"
+          backgroundColor="#1a1a1a"
+          translucent={false}
+        />
+      )}
+      <AppNavigator />
+    </>
+  );
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -37,15 +57,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
-        {Platform.OS === "android" && (
-          <RNStatusBar
-            barStyle="light-content"
-            backgroundColor="#1a1a1a"
-            translucent={false}
-          />
-        )}
-        <AppNavigator />
+        <AppContent />
       </AuthProvider>
     </SafeAreaProvider>
   );

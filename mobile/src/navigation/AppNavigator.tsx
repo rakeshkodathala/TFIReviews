@@ -23,6 +23,7 @@ import MyReviewsScreen from "../screens/MyReviewsScreen";
 import WatchlistScreen from "../screens/WatchlistScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import NotificationFeedScreen from "../screens/NotificationFeedScreen";
 import AboutScreen from "../screens/AboutScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import FollowersListScreen from "../screens/FollowersListScreen";
@@ -88,6 +89,7 @@ export type AccountStackParamList = {
   Watchlist: undefined;
   Settings: undefined;
   Notifications: undefined;
+  NotificationFeed: undefined;
   About: undefined;
 };
 

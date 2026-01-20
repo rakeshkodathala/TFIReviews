@@ -41,6 +41,7 @@ import authRouter from './routes/auth';
 import movieSearchRouter from './routes/movieSearch';
 import watchlistRouter from './routes/watchlist';
 import usersRouter from './routes/users';
+import notificationsRouter from './routes/notifications';
 
 app.use('/api/movies', moviesRouter);
 app.use('/api/reviews', reviewsRouter);
@@ -48,6 +49,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/movie-search', movieSearchRouter);
 app.use('/api/watchlist', watchlistRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {

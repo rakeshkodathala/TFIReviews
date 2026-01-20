@@ -1,13 +1,79 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Switch } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, ScrollView, Switch, ActivityIndicator, Alert } from "react-native";
 import { AppText } from "../components/Typography";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
+import { notificationsService } from "../services/api";
+import { useFocusEffect } from "@react-navigation/native";
 
 const NotificationsScreen: React.FC = () => {
+  const { isAuthenticated, isGuest } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [reviewNotifications, setReviewNotifications] = useState(true);
   const [newMovieNotifications, setNewMovieNotifications] = useState(true);
   const [watchlistNotifications, setWatchlistNotifications] = useState(false);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
+
+  // Load preferences from backend
+  const loadPreferences = useCallback(async () => {
+    if (!isAuthenticated || isGuest) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const preferences = await notificationsService.getPreferences();
+      setReviewNotifications(preferences.reviewNotifications ?? true);
+      setNewMovieNotifications(preferences.newMovieNotifications ?? true);
+      setWatchlistNotifications(preferences.watchlistNotifications ?? false);
+      setWeeklyDigest(preferences.weeklyDigest ?? true);
+    } catch (error: any) {
+      console.error("Error loading notification preferences:", error);
+      // Keep default values on error
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, isGuest]);
+
+  // Save preferences to backend
+  const savePreferences = async (updates: {
+    reviewNotifications?: boolean;
+    newMovieNotifications?: boolean;
+    watchlistNotifications?: boolean;
+    weeklyDigest?: boolean;
+  }) => {
+    if (!isAuthenticated || isGuest) {
+      Alert.alert("Login Required", "Please login to save notification preferences");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await notificationsService.updatePreferences(updates);
+    } catch (error: any) {
+      console.error("Error saving notification preferences:", error);
+      Alert.alert("Error", "Failed to save preferences. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Load preferences when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadPreferences();
+    }, [loadPreferences])
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContainer]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -36,9 +102,13 @@ const NotificationsScreen: React.FC = () => {
               </View>
               <Switch
                 value={reviewNotifications}
-                onValueChange={setReviewNotifications}
+                onValueChange={(value) => {
+                  setReviewNotifications(value);
+                  savePreferences({ reviewNotifications: value });
+                }}
                 trackColor={{ false: "#333", true: "#007AFF" }}
                 thumbColor="#fff"
+                disabled={saving || !isAuthenticated || isGuest}
               />
             </View>
 
@@ -56,9 +126,13 @@ const NotificationsScreen: React.FC = () => {
               </View>
               <Switch
                 value={newMovieNotifications}
-                onValueChange={setNewMovieNotifications}
+                onValueChange={(value) => {
+                  setNewMovieNotifications(value);
+                  savePreferences({ newMovieNotifications: value });
+                }}
                 trackColor={{ false: "#333", true: "#007AFF" }}
                 thumbColor="#fff"
+                disabled={saving || !isAuthenticated || isGuest}
               />
             </View>
 
@@ -78,9 +152,13 @@ const NotificationsScreen: React.FC = () => {
               </View>
               <Switch
                 value={watchlistNotifications}
-                onValueChange={setWatchlistNotifications}
+                onValueChange={(value) => {
+                  setWatchlistNotifications(value);
+                  savePreferences({ watchlistNotifications: value });
+                }}
                 trackColor={{ false: "#333", true: "#007AFF" }}
                 thumbColor="#fff"
+                disabled={saving || !isAuthenticated || isGuest}
               />
             </View>
 
@@ -98,9 +176,13 @@ const NotificationsScreen: React.FC = () => {
               </View>
               <Switch
                 value={weeklyDigest}
-                onValueChange={setWeeklyDigest}
+                onValueChange={(value) => {
+                  setWeeklyDigest(value);
+                  savePreferences({ weeklyDigest: value });
+                }}
                 trackColor={{ false: "#333", true: "#007AFF" }}
                 thumbColor="#fff"
+                disabled={saving || !isAuthenticated || isGuest}
               />
             </View>
           </View>
@@ -206,6 +288,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#999",
     lineHeight: 18,
+  },
+  centerContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
