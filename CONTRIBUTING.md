@@ -37,32 +37,54 @@ Before you begin, make sure you have:
 
 ### Fork and Clone
 
-1. **Fork the repository** on GitHub
-2. **Clone your fork**:
+> **⚠️ Important**: You **must** fork the repository first. You cannot directly push to the main repository.
+
+1. **Fork the repository** on GitHub:
+   - Go to the main repository: `https://github.com/ORIGINAL_OWNER/TFIReviews`
+   - Click the "Fork" button in the top right corner
+   - This creates a copy of the repository under your GitHub account
+
+2. **Clone your fork** (not the main repository):
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/TFIReviews.git
    cd TFIReviews
    ```
-3. **Add upstream remote**:
+
+3. **Add upstream remote** (to sync with the main repository):
+
    ```bash
    git remote add upstream https://github.com/ORIGINAL_OWNER/TFIReviews.git
    ```
+
+4. **Verify your remotes**:
+
+   ```bash
+   git remote -v
+   ```
+
+   You should see:
+   - `origin` - points to your fork (where you push)
+   - `upstream` - points to the main repository (where you pull updates from)
 
 ## 🛠️ Development Setup
 
 ### Backend Setup
 
 1. Navigate to the backend directory:
+
    ```bash
    cd backend
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Create a `.env` file:
+
    ```env
    PORT=3000
    MONGODB_URI=mongodb://localhost:27017/tfireviews
@@ -71,6 +93,7 @@ Before you begin, make sure you have:
    ```
 
 4. Start MongoDB (if running locally):
+
    ```bash
    # macOS
    brew services start mongodb-community
@@ -83,6 +106,7 @@ Before you begin, make sure you have:
    ```
 
 5. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -92,16 +116,19 @@ Before you begin, make sure you have:
 ### Mobile App Setup
 
 1. Navigate to the mobile directory:
+
    ```bash
    cd mobile
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Update API configuration in `src/config/api.ts`:
+
    ```typescript
    // For iOS Simulator
    export const API_URL = 'http://localhost:3000/api';
@@ -114,6 +141,7 @@ Before you begin, make sure you have:
    ```
 
 4. Start the Expo development server:
+
    ```bash
    npm start
    ```
@@ -125,16 +153,19 @@ Before you begin, make sure you have:
 ### Web App Setup
 
 1. Navigate to the web directory:
+
    ```bash
    cd web
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start the development server:
+
    ```bash
    npm start
    ```
@@ -270,9 +301,18 @@ export default ComponentName;
 
 ## 🔀 Git Workflow
 
+### ⚠️ Important: Fork First
+
+**You cannot directly push to the main repository.** All contributions must go through the fork workflow:
+
+1. **Fork the repository** on GitHub (if you haven't already)
+2. **Work on your fork** - all changes are made in your fork
+3. **Create a Pull Request** from your fork to the main repository
+
 ### Branch Naming
 
 Use descriptive branch names:
+
 - `feature/add-watchlist-functionality`
 - `fix/search-bar-alignment`
 - `refactor/movie-card-component`
@@ -291,6 +331,7 @@ footer (optional)
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -300,6 +341,7 @@ footer (optional)
 - `chore`: Maintenance tasks
 
 **Examples:**
+
 ```
 feat(mobile): add pull-to-refresh to activity screen
 fix(backend): resolve authentication token expiration issue
@@ -309,32 +351,52 @@ refactor(web): simplify movie card component
 
 ### Workflow Steps
 
-1. **Update your fork**:
+> **Remember**: You're working on **your fork**, not the main repository!
+
+1. **Update your fork** with the latest changes from the main repository:
+
    ```bash
    git fetch upstream
    git checkout main
    git merge upstream/main
+   git push origin main  # Update your fork's main branch
    ```
 
-2. **Create a feature branch**:
+2. **Create a feature branch in your fork**:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 3. **Make your changes** and commit:
+
    ```bash
    git add .
    git commit -m "feat(scope): your commit message"
    ```
 
-4. **Push to your fork**:
+4. **Push to your fork** (not the main repository):
+
    ```bash
    git push origin feature/your-feature-name
    ```
 
-5. **Create a Pull Request** on GitHub
+5. **Create a Pull Request** on GitHub:
+   - Go to the main repository on GitHub
+   - You'll see a banner suggesting to create a PR from your recently pushed branch
+   - Click "Compare & pull request"
+   - Fill out the PR template
+   - Submit the PR from **your fork** to the **main repository**
 
 ## 🔍 Pull Request Process
+
+### ⚠️ Important: PRs Must Come From Your Fork
+
+**You cannot create a PR directly from the main repository.** All Pull Requests must be created from your fork:
+
+1. Make changes in **your fork**
+2. Push to a branch in **your fork**
+3. Create a PR from **your fork's branch** → **main repository's main branch**
 
 ### Before Submitting
 
@@ -344,6 +406,7 @@ refactor(web): simplify movie card component
 - [ ] Documentation is updated (if needed)
 - [ ] No console.logs or debug code left behind
 - [ ] Commit messages follow conventional commits
+- [ ] Your fork is up to date with the main repository
 
 ### PR Description Template
 
@@ -388,11 +451,13 @@ Add screenshots here
 Before submitting a PR, test your changes:
 
 **Backend:**
+
 - Test all API endpoints with Postman or similar
 - Test error cases (invalid input, missing auth, etc.)
 - Test with different user roles/permissions
 
 **Mobile:**
+
 - Test on iOS Simulator
 - Test on Android Emulator
 - Test on physical devices (if possible)
@@ -401,6 +466,7 @@ Before submitting a PR, test your changes:
 - Test error states
 
 **Web:**
+
 - Test in Chrome, Firefox, Safari
 - Test responsive design (mobile, tablet, desktop)
 - Test all user flows
@@ -420,11 +486,13 @@ Before submitting a PR, test your changes:
 We welcome contributions in all areas! Here are some ideas:
 
 ### 🐛 Bug Fixes
+
 - Fix any issues you encounter
 - Improve error handling
 - Fix UI/UX issues
 
 ### ✨ New Features
+
 - Additional movie filters
 - Social features (follow users, comments on reviews)
 - Push notifications
@@ -434,24 +502,28 @@ We welcome contributions in all areas! Here are some ideas:
 - Movie lists/collections
 
 ### 📚 Documentation
+
 - Improve README files
 - Add code comments
 - Create tutorials
 - Update API documentation
 
 ### 🎨 UI/UX Improvements
+
 - Improve animations
 - Better loading states
 - Enhanced accessibility
 - Responsive design improvements
 
 ### ⚡ Performance
+
 - Optimize image loading
 - Reduce bundle size
 - Improve API response times
 - Add caching strategies
 
 ### 🧪 Testing
+
 - Add unit tests
 - Add integration tests
 - Improve test coverage
@@ -535,7 +607,7 @@ export default NewComponent;
 - **Discussions**: Use GitHub Discussions for questions
 - **Email**: Contact the maintainers (if contact info is available)
 
-## 🙏 Thank You!
+## 🙏 Thank You
 
 Your contributions make TFI Reviews better for everyone. We appreciate your time and effort!
 

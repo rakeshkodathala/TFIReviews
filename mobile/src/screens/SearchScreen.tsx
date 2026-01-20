@@ -847,13 +847,13 @@ const SearchScreen: React.FC = () => {
           )}
 
           {loading ? (
-            <View style={styles.centerContainer}>
-              <View style={styles.skeletonGrid}>
-                {Array.from({ length: 9 }).map((_, index) => (
-                  <MovieCardSkeleton key={index} width={CARD_WIDTH} />
-                ))}
-              </View>
-            </View>
+            <FlatList
+              data={Array.from({ length: 9 })}
+              renderItem={() => <MovieCardSkeleton width={CARD_WIDTH} />}
+              keyExtractor={(_, index) => `skeleton-${index}`}
+              numColumns={3}
+              contentContainerStyle={styles.list}
+            />
           ) : error && showSearchResults ? (
             <ErrorView
               message={error}

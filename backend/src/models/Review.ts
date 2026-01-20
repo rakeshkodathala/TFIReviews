@@ -7,12 +7,12 @@ const reviewSchema = new Schema<IReview>(
       type: Schema.Types.ObjectId,
       ref: 'Movie',
       required: true,
-    },
+    } as any,
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-    },
+    } as any,
     rating: {
       type: Number,
       required: true,

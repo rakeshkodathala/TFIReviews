@@ -63,7 +63,7 @@ export const MovieCardSkeleton: React.FC<{ width: number }> = ({ width }) => {
     <View style={[styles.movieCard, { width }]}>
       <SkeletonLoader
         width="100%"
-        height={width / 0.55}
+        height={width / 0.75}
         borderRadius={12}
         style={styles.poster}
       />

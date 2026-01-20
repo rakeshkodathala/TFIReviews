@@ -1,4 +1,4 @@
-import express, { Router, Request, Response } from 'express';
+import express, { Router, Response } from 'express';
 import Watchlist from '../models/Watchlist';
 import Movie from '../models/Movie';
 import { AuthRequest } from '../types';

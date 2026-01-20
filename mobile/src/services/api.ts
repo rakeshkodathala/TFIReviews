@@ -83,6 +83,11 @@ export const authService = {
     return response.data;
   },
 
+  async changePassword(data: { currentPassword: string; newPassword: string; confirmPassword: string }) {
+    const response = await apiClient.put('/auth/password', data);
+    return response.data;
+  },
+
   async getStats() {
     const response = await apiClient.get('/auth/stats');
     return response.data;
@@ -90,6 +95,26 @@ export const authService = {
 
   async getMyReviews(limit?: number) {
     const response = await apiClient.get('/auth/reviews', { params: { limit } });
+    return response.data;
+  },
+
+  async forgotPassword(email: string) {
+    const response = await apiClient.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async verifyOTP(email: string, otp: string) {
+    const response = await apiClient.post('/auth/verify-otp', { email, otp });
+    return response.data;
+  },
+
+  async resetPassword(email: string, otp: string, newPassword: string, confirmPassword: string) {
+    const response = await apiClient.post('/auth/reset-password', {
+      email,
+      otp,
+      newPassword,
+      confirmPassword,
+    });
     return response.data;
   },
 };
@@ -139,23 +164,26 @@ export const moviesService = {
 
 // Reviews Service
 export const reviewsService = {
-  async getAll(params?: { page?: number; limit?: number }) {
+  async getAll(params?: { page?: number; limit?: number; userId?: string }) {
     const response = await apiClient.get('/reviews', { params });
     return response.data;
   },
 
-  async getById(id: string) {
-    const response = await apiClient.get(`/reviews/${id}`);
+  async getById(id: string, userId?: string) {
+    const params = userId ? { userId } : {};
+    const response = await apiClient.get(`/reviews/${id}`, { params });
     return response.data;
   },
 
-  async getByMovie(movieId: string) {
-    const response = await apiClient.get(`/reviews/movie/${movieId}`);
+  async getByMovie(movieId: string, userId?: string) {
+    const params = userId ? { userId } : {};
+    const response = await apiClient.get(`/reviews/movie/${movieId}`, { params });
     return response.data;
   },
 
-  async getByTmdbId(tmdbId: number) {
-    const response = await apiClient.get(`/reviews/tmdb/${tmdbId}`);
+  async getByTmdbId(tmdbId: number, userId?: string) {
+    const params = userId ? { userId } : {};
+    const response = await apiClient.get(`/reviews/tmdb/${tmdbId}`, { params });
     return response.data;
   },
 
@@ -171,6 +199,21 @@ export const reviewsService = {
 
   async delete(id: string) {
     const response = await apiClient.delete(`/reviews/${id}`);
+    return response.data;
+  },
+
+  async like(reviewId: string) {
+    const response = await apiClient.post(`/reviews/${reviewId}/like`);
+    return response.data;
+  },
+
+  async unlike(reviewId: string) {
+    const response = await apiClient.delete(`/reviews/${reviewId}/like`);
+    return response.data;
+  },
+
+  async getLikes(reviewId: string) {
+    const response = await apiClient.get(`/reviews/${reviewId}/likes`);
     return response.data;
   },
 };
@@ -209,6 +252,40 @@ export const movieSearchService = {
 
   async getPersonDetails(personId: number) {
     const response = await apiClient.get(`/movie-search/person/${personId}`);
+    return response.data;
+  },
+};
+
+// Users Service
+export const usersService = {
+  async getById(userId: string, currentUserId?: string) {
+    const params = currentUserId ? { userId: currentUserId } : {};
+    const response = await apiClient.get(`/users/${userId}`, { params });
+    return response.data;
+  },
+
+  async getFollowers(userId: string, params?: { page?: number; limit?: number }) {
+    const response = await apiClient.get(`/users/${userId}/followers`, { params });
+    return response.data;
+  },
+
+  async getFollowing(userId: string, params?: { page?: number; limit?: number }) {
+    const response = await apiClient.get(`/users/${userId}/following`, { params });
+    return response.data;
+  },
+
+  async getFollowStatus(userId: string) {
+    const response = await apiClient.get(`/users/${userId}/follow-status`);
+    return response.data;
+  },
+
+  async follow(userId: string) {
+    const response = await apiClient.post(`/users/${userId}/follow`);
+    return response.data;
+  },
+
+  async unfollow(userId: string) {
+    const response = await apiClient.delete(`/users/${userId}/follow`);
     return response.data;
   },
 };

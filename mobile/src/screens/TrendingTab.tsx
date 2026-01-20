@@ -245,11 +245,13 @@ const TrendingTab: React.FC<TrendingTabProps> = ({ navigation }) => {
 
       {/* Movies Grid */}
       {loading && popularThisMonth.length === 0 ? (
-        <View style={styles.list}>
-          {Array.from({ length: 9 }).map((_, index) => (
-            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
-          ))}
-        </View>
+        <FlatList
+          data={Array.from({ length: 9 })}
+          renderItem={() => <MovieCardSkeleton width={CARD_WIDTH} />}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          numColumns={NUM_COLUMNS}
+          contentContainerStyle={styles.list}
+        />
       ) : error && popularThisMonth.length === 0 ? (
         <ErrorView message={error} onRetry={loadPopularThisMonth} />
       ) : (

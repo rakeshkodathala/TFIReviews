@@ -211,7 +211,16 @@ const ActivityScreen: React.FC = () => {
 
               {/* User Info Row */}
               <View style={styles.userRow}>
-                <View style={styles.userInfo}>
+                <TouchableOpacity
+                  style={styles.userInfo}
+                  onPress={() => {
+                    const reviewerId = reviewer._id || reviewer.id;
+                    if (reviewerId) {
+                      navigation.navigate("UserProfile" as any, { userId: reviewerId });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
                   {reviewer.avatar ? (
                     <OptimizedImage
                       uri={reviewer.avatar}
@@ -225,10 +234,13 @@ const ActivityScreen: React.FC = () => {
                       </AppText>
                     </View>
                   )}
-                  <AppText style={styles.reviewerName} numberOfLines={1}>
-                    {reviewer.username || "Anonymous"}
-                  </AppText>
-                </View>
+                  <View style={styles.reviewerNameRow}>
+                    <AppText style={styles.reviewerName} numberOfLines={1}>
+                      {reviewer.username || "Anonymous"}
+                    </AppText>
+                    <Ionicons name="chevron-forward" size={12} color="#666" style={styles.profileChevron} />
+                  </View>
+                </TouchableOpacity>
                 {timeAgo && (
                   <AppText style={styles.reviewTime}>{timeAgo}</AppText>
                 )}

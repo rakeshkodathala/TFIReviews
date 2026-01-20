@@ -18,6 +18,7 @@ import OptimizedImage from "../components/OptimizedImage";
 import { MovieCardSkeleton } from "../components/SkeletonLoader";
 import ErrorView from "../components/ErrorView";
 import OfflineBanner from "../components/OfflineBanner";
+import { useAuth } from "../context/AuthContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const NUM_COLUMNS = 3;
@@ -34,12 +35,16 @@ type WatchlistScreenNavigationProp = NativeStackNavigationProp<
 
 const WatchlistScreen: React.FC = () => {
   const navigation = useNavigation<WatchlistScreenNavigationProp>();
+  const { isAuthenticated, isGuest } = useAuth();
   const [watchlist, setWatchlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadWatchlist = useCallback(async () => {
+    if (!isAuthenticated || isGuest) {
+      return;
+    }
     try {
       setLoading(true);
       const response = await watchlistService.getAll({ limit: 100 });
@@ -53,12 +58,25 @@ const WatchlistScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isAuthenticated, isGuest]);
 
   useFocusEffect(
     useCallback(() => {
+      if (!isAuthenticated || isGuest) {
+        Alert.alert(
+          'Login Required',
+          'Please login or sign up to access your watchlist',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+        return;
+      }
       loadWatchlist();
-    }, [loadWatchlist])
+    }, [isAuthenticated, isGuest, loadWatchlist, navigation])
   );
 
   const onRefresh = useCallback(() => {
@@ -150,11 +168,13 @@ const WatchlistScreen: React.FC = () => {
     <View style={styles.container}>
       <OfflineBanner />
       {loading && watchlist.length === 0 ? (
-        <View style={styles.list}>
-          {Array.from({ length: 9 }).map((_, index) => (
-            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
-          ))}
-        </View>
+        <FlatList
+          data={Array.from({ length: 9 })}
+          renderItem={() => <MovieCardSkeleton width={CARD_WIDTH} />}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          numColumns={NUM_COLUMNS}
+          contentContainerStyle={styles.list}
+        />
       ) : error && watchlist.length === 0 ? (
         <ErrorView message={error} onRetry={loadWatchlist} />
       ) : (

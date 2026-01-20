@@ -161,11 +161,28 @@ We welcome contributions! Please read our [Contributing Guide](./CONTRIBUTING.md
 
 ### Quick Contribution Steps
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+> **⚠️ Important**: You **must** fork the repository first. You cannot directly push to the main repository.
+
+1. **Fork the repository** on GitHub (creates a copy under your account)
+2. **Clone your fork** (not the main repository):
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/TFIReviews.git
+   ```
+3. **Create a feature branch** in your fork:
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+4. **Make your changes** and commit:
+   ```bash
+   git commit -m 'feat: add amazing feature'
+   ```
+5. **Push to your fork**:
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+6. **Open a Pull Request** from your fork to the main repository
+
+For detailed instructions, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## 📄 License
 

@@ -12,12 +12,15 @@ import {
   Animated,
   FlatList,
   Dimensions,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { AppText, AppTextInput } from "../components/Typography";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useAuth } from "../context/AuthContext";
-import { authService, watchlistService } from "../services/api";
+import { authService, watchlistService, usersService } from "../services/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -39,7 +42,7 @@ type AccountScreenNavigationProp = NativeStackNavigationProp<
 >;
 
 const AccountScreen: React.FC = () => {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, isAuthenticated, isGuest } = useAuth();
   const navigation = useNavigation<AccountScreenNavigationProp>();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -53,13 +56,37 @@ const AccountScreen: React.FC = () => {
   const [recentReviews, setRecentReviews] = useState<any[]>([]);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // Redirect guests to login
   useFocusEffect(
     useCallback(() => {
+      if (!isAuthenticated || isGuest) {
+        Alert.alert(
+          'Login Required',
+          'Please login or sign up to access your account',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate to login - will be handled by AppNavigator
+              },
+            },
+          ]
+        );
+        return;
+      }
       loadStats();
       loadRecentReviews();
       loadWatchlistCount();
-    }, [])
+      loadFollowCounts();
+    }, [isAuthenticated, isGuest])
   );
 
   useEffect(() => {
@@ -111,6 +138,18 @@ const AccountScreen: React.FC = () => {
       setRecentReviews(data.reviews || []);
     } catch (error) {
       console.error("Error loading recent reviews:", error);
+    }
+  };
+
+  const loadFollowCounts = async () => {
+    if (!user?.id) return;
+    try {
+      const userId = user.id;
+      const profileData = await usersService.getById(userId);
+      setFollowerCount(profileData.followerCount || 0);
+      setFollowingCount(profileData.followingCount || 0);
+    } catch (error) {
+      console.error("Error loading follow counts:", error);
     }
   };
 
@@ -227,6 +266,44 @@ const AccountScreen: React.FC = () => {
     ]);
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert("Error", "All password fields are required.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "New password and confirmation do not match.");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await authService.changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      Alert.alert("Success", "Password changed successfully!");
+      setShowPasswordModal(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error.response?.data?.error || "Failed to change password"
+      );
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -254,7 +331,7 @@ const AccountScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.container}>
           {showSuccessToast && (
             <Animated.View
@@ -271,7 +348,10 @@ const AccountScreen: React.FC = () => {
           )}
           <ScrollView
             style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
           >
             <View style={styles.content}>
               {/* Profile Header */}
@@ -304,6 +384,44 @@ const AccountScreen: React.FC = () => {
                     {user?.username || "User"}
                   </AppText>
                   <AppText style={styles.email}>{user?.email || ""}</AppText>
+                  
+                  {/* Member Since */}
+                  {stats?.memberSince && (
+                    <AppText style={styles.memberSince}>
+                      Member since {formatDate(stats.memberSince)}
+                    </AppText>
+                  )}
+                  
+                  {/* Follower/Following Counts */}
+                  <View style={styles.followStats}>
+                    <TouchableOpacity
+                      style={styles.followStatItem}
+                      onPress={() => {
+                        const userId = user?.id;
+                        if (userId) {
+                          navigation.navigate('FollowersList' as any, { userId });
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <AppText style={styles.followStatNumber}>{followerCount}</AppText>
+                      <AppText style={styles.followStatLabel}>Followers</AppText>
+                    </TouchableOpacity>
+                    <View style={styles.followStatDivider} />
+                    <TouchableOpacity
+                      style={styles.followStatItem}
+                      onPress={() => {
+                        const userId = user?.id;
+                        if (userId) {
+                          navigation.navigate('FollowingList' as any, { userId });
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <AppText style={styles.followStatNumber}>{followingCount}</AppText>
+                      <AppText style={styles.followStatLabel}>Following</AppText>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {!editing && (
@@ -332,6 +450,12 @@ const AccountScreen: React.FC = () => {
                       "Total Reviews",
                       stats.totalReviews,
                       "#007AFF"
+                    )}
+                    {renderStatCard(
+                      "star",
+                      "Avg Rating",
+                      stats.avgRating > 0 ? `${stats.avgRating.toFixed(1)}/10` : "N/A",
+                      "#FFD700"
                     )}
                     {renderStatCard(
                       "calendar",
@@ -589,6 +713,38 @@ const AccountScreen: React.FC = () => {
                 </View>
               </View>
 
+              {/* Security Section */}
+              {!editing && (
+                <View style={styles.section}>
+                  <AppText style={styles.sectionTitle}>Security</AppText>
+
+                  <View style={styles.listContainer}>
+                    <TouchableOpacity
+                      style={[styles.listItem, styles.listItemFirst, styles.listItemLast]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        console.log('Change Password pressed');
+                        setShowPasswordModal(true);
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={styles.listIconContainer}>
+                          <Ionicons
+                            name="lock-closed-outline"
+                            size={18}
+                            color="#007AFF"
+                          />
+                        </View>
+                        <AppText style={styles.listItemValue}>
+                          Change Password
+                        </AppText>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
               {/* Settings Section */}
               {!editing && (
                 <View style={styles.section}>
@@ -703,6 +859,116 @@ const AccountScreen: React.FC = () => {
           </ScrollView>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Password Change Modal */}
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowPasswordModal(false);
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        }}
+        statusBarTranslucent={true}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            setShowPasswordModal(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+          }}>
+            <View style={styles.modalOverlayInner}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <AppText style={styles.modalTitle}>Change Password</AppText>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowPasswordModal(false);
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }}
+                      style={styles.modalCloseButton}
+                    >
+                      <Ionicons name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView
+                    style={styles.modalBody}
+                    contentContainerStyle={styles.modalBodyContent}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.passwordInputContainer}>
+                      <AppText style={styles.passwordLabel}>Current Password</AppText>
+                      <AppTextInput
+                        style={styles.passwordInput}
+                        value={currentPassword}
+                        onChangeText={setCurrentPassword}
+                        placeholder="Enter current password"
+                        placeholderTextColor="#666"
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </View>
+
+                    <View style={styles.passwordInputContainer}>
+                      <AppText style={styles.passwordLabel}>New Password</AppText>
+                      <AppTextInput
+                        style={styles.passwordInput}
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        placeholder="Enter new password (min 6 characters)"
+                        placeholderTextColor="#666"
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </View>
+
+                    <View style={styles.passwordInputContainer}>
+                      <AppText style={styles.passwordLabel}>Confirm New Password</AppText>
+                      <AppTextInput
+                        style={styles.passwordInput}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        placeholder="Confirm new password"
+                        placeholderTextColor="#666"
+                        secureTextEntry
+                        autoCapitalize="none"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.modalButton, passwordLoading && styles.modalButtonDisabled]}
+                      onPress={handleChangePassword}
+                      disabled={passwordLoading}
+                      activeOpacity={0.8}
+                    >
+                      {passwordLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <AppText style={styles.modalButtonText}>Change Password</AppText>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -714,6 +980,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
   },
   toastContainer: {
     position: "absolute",
@@ -819,7 +1088,38 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: "#999",
+    marginBottom: 6,
+  },
+  memberSince: {
+    fontSize: 12,
+    color: "#666",
     marginBottom: 10,
+    fontStyle: "italic",
+  },
+  followStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 16,
+  },
+  followStatItem: {
+    alignItems: "center",
+  },
+  followStatNumber: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  followStatLabel: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "500",
+  },
+  followStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#333",
   },
   quickStats: {
     flexDirection: "row",
@@ -876,11 +1176,13 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     justifyContent: "space-between",
   },
   statCard: {
     flex: 1,
+    minWidth: "47%",
     backgroundColor: "#2a2a2a",
     borderRadius: 10,
     padding: 10,
@@ -891,6 +1193,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 1,
+    marginBottom: 8,
   },
   statIconContainer: {
     width: 32,
@@ -1249,6 +1552,80 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalOverlayInner: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#2a2a2a",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
+    width: "100%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalBody: {
+    flexGrow: 0,
+  },
+  modalBodyContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  passwordInputContainer: {
+    marginBottom: 20,
+  },
+  passwordLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#999",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  passwordInput: {
+    fontSize: 16,
+    color: "#fff",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  modalButton: {
+    backgroundColor: "#007AFF",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

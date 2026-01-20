@@ -14,6 +14,7 @@ import {
 import { AppText, AppTextInput } from "../components/Typography";
 import { useAuth } from "../context/AuthContext";
 import { typography } from "../constants/typography";
+import { Ionicons } from "@expo/vector-icons";
 
 interface LoginScreenProps {
   navigation: any;
@@ -23,7 +24,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, continueAsGuest } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -81,6 +82,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               />
 
               <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={() => navigation.navigate("ForgotPassword")}
+              >
+                <AppText style={styles.forgotPasswordText}>
+                  Forgot Password?
+                </AppText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleLogin}
                 disabled={loading}
@@ -99,6 +109,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 <AppText style={styles.linkText}>
                   Don't have an account?{" "}
                   <AppText style={styles.linkBold}>Sign Up</AppText>
+                </AppText>
+              </TouchableOpacity>
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <AppText style={styles.dividerText}>OR</AppText>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={continueAsGuest}
+              >
+                <Ionicons name="person-outline" size={20} color="#007AFF" />
+                <AppText style={styles.guestButtonText}>
+                  Continue as Guest
                 </AppText>
               </TouchableOpacity>
             </View>
@@ -172,6 +198,46 @@ const styles = StyleSheet.create({
   },
   linkBold: {
     ...typography.styles.buttonSmall,
+    color: "#007AFF",
+  },
+  forgotPasswordButton: {
+    alignSelf: "flex-end",
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    ...typography.styles.bodySmall,
+    color: "#007AFF",
+    fontSize: 14,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#333",
+  },
+  dividerText: {
+    ...typography.styles.bodySmall,
+    color: "#666",
+    fontSize: 12,
+  },
+  guestButton: {
+    height: 50,
+    backgroundColor: "transparent",
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#007AFF",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  guestButtonText: {
+    ...typography.styles.button,
     color: "#007AFF",
   },
 });

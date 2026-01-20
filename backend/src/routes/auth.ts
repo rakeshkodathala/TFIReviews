@@ -2,8 +2,10 @@ import express, { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import Review from '../models/Review';
+import PasswordReset from '../models/PasswordReset';
 import { IUser, AuthRequest } from '../types';
 import { authenticate } from '../middleware/auth';
+import { sendOTPEmail } from '../services/emailService';
 
 const router: Router = express.Router();
 
@@ -39,7 +41,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterBody>, res: Respons
     const { username, email, password, name } = req.body;
 
     // Check if user already exists
-    const existingUser: IUser | null = await User.findOne({
+    const existingUser = await User.findOne({
       $or: [{ email }, { username }],
     }).lean();
 
@@ -115,30 +117,30 @@ router.get('/verify', async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      return res.status(401).json({ 
-        error: 'Authentication required', 
-        details: 'No Authorization header found' 
+      return res.status(401).json({
+        error: 'Authentication required',
+        details: 'No Authorization header found'
       });
     }
 
     if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        error: 'Invalid authorization format', 
-        details: 'Authorization header must start with "Bearer "' 
+      return res.status(401).json({
+        error: 'Invalid authorization format',
+        details: 'Authorization header must start with "Bearer "'
       });
     }
 
     const token = authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ 
-        error: 'Authentication required', 
-        details: 'No token found in Authorization header' 
+      return res.status(401).json({
+        error: 'Authentication required',
+        details: 'No token found in Authorization header'
       });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    
+
     return res.json({
       valid: true,
       userId: decoded.userId,
@@ -146,21 +148,21 @@ router.get('/verify', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        error: 'Invalid token', 
-        details: error.message 
+      return res.status(401).json({
+        error: 'Invalid token',
+        details: error.message
       });
     }
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        error: 'Token expired', 
+      return res.status(401).json({
+        error: 'Token expired',
         details: error.message,
         expiredAt: error.expiredAt
       });
     }
-    return res.status(401).json({ 
-      error: 'Token verification failed', 
-      details: error.message 
+    return res.status(401).json({
+      error: 'Token verification failed',
+      details: error.message
     });
   }
 });
@@ -180,7 +182,7 @@ router.put('/profile', authenticate, async (req: AuthRequest, res: Response) => 
     if (avatar !== undefined) updateData.avatar = avatar;
     if (location !== undefined) updateData.location = location;
 
-    const user: IUser | null = await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
       { new: true, runValidators: true }
@@ -238,7 +240,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
     });
     const mostCommonRating = Object.keys(ratingCounts).reduce((a, b) =>
       ratingCounts[parseInt(a)] > ratingCounts[parseInt(b)] ? a : b
-    , '0');
+      , '0');
 
     // Get user creation date
     const user = await User.findById(userId).select('createdAt').lean();
@@ -274,6 +276,181 @@ router.get('/reviews', authenticate, async (req: AuthRequest, res: Response) => 
       .lean();
 
     res.json({ reviews });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Change password
+router.put('/password', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'All password fields are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirmation do not match' });
+    }
+
+    // Get user with password
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid current password' });
+    }
+
+    // Prevent reusing the same password
+    const isSamePassword = await user.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({ error: 'New password cannot be the same as the current password' });
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Forgot password - Send OTP
+router.post('/forgot-password', async (req: Request<{}, {}, { email: string }>, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Invalidate any existing OTPs for this email
+    await PasswordReset.updateMany(
+      { email: email.toLowerCase(), used: false },
+      { used: true }
+    );
+
+    // Create new password reset entry
+    const passwordReset = new PasswordReset({
+      email: email.toLowerCase(),
+      otp,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    });
+    await passwordReset.save();
+
+    // Send OTP email (will log to console in dev mode if SMTP not configured)
+    try {
+      await sendOTPEmail(email.toLowerCase(), otp);
+    } catch (emailError: any) {
+      // Only fail in production if email sending fails
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ error: 'Failed to send email. Please try again later.' });
+      }
+      // In development, OTP is already logged by sendOTPEmail
+    }
+
+    res.json({ message: 'If an account exists with this email, a reset code has been sent.' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify OTP
+router.post('/verify-otp', async (req: Request<{}, {}, { email: string; otp: string }>, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    const passwordReset = await PasswordReset.findOne({
+      email: email.toLowerCase(),
+      otp,
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!passwordReset) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    res.json({ message: 'OTP verified successfully', verified: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset password with OTP
+router.post('/reset-password', async (req: Request<{}, {}, { email: string; otp: string; newPassword: string; confirmPassword: string }>, res: Response) => {
+  try {
+    const { email, otp, newPassword, confirmPassword } = req.body;
+
+    if (!email || !otp || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and confirmation do not match' });
+    }
+
+    // Verify OTP
+    const passwordReset = await PasswordReset.findOne({
+      email: email.toLowerCase(),
+      otp,
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!passwordReset) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    // Mark OTP as used
+    passwordReset.used = true;
+    await passwordReset.save();
+
+    res.json({ message: 'Password reset successfully' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

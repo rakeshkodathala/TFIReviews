@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import SplashScreen from "../SplashScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import MoviesScreen from "../screens/MoviesScreen";
 import SearchScreen from "../screens/SearchScreen";
 import ActivityScreen from "../screens/ActivityScreen";
@@ -23,6 +24,9 @@ import WatchlistScreen from "../screens/WatchlistScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import AboutScreen from "../screens/AboutScreen";
+import UserProfileScreen from "../screens/UserProfileScreen";
+import FollowersListScreen from "../screens/FollowersListScreen";
+import FollowingListScreen from "../screens/FollowingListScreen";
 
 // Navigation types
 export type RootStackParamList = {
@@ -32,6 +36,7 @@ export type RootStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 export type MainTabParamList = {
@@ -46,6 +51,9 @@ export type HomeStackParamList = {
   MovieDetails: { movie: any };
   CreateReview: { movie: any; review?: any };
   CastDetails: { personId: number; personName: string };
+  UserProfile: { userId: string };
+  FollowersList: { userId: string };
+  FollowingList: { userId: string };
 };
 
 export type SearchStackParamList = {
@@ -53,6 +61,9 @@ export type SearchStackParamList = {
   MovieDetails: { movie: any };
   CreateReview: { movie: any; review?: any };
   CastDetails: { personId: number; personName: string };
+  UserProfile: { userId: string };
+  FollowersList: { userId: string };
+  FollowingList: { userId: string };
 };
 
 export type ActivityStackParamList = {
@@ -60,6 +71,9 @@ export type ActivityStackParamList = {
   MovieDetails: { movie: any };
   CreateReview: { movie: any; review?: any };
   CastDetails: { personId: number; personName: string };
+  UserProfile: { userId: string };
+  FollowersList: { userId: string };
+  FollowingList: { userId: string };
 };
 
 export type AccountStackParamList = {
@@ -67,6 +81,9 @@ export type AccountStackParamList = {
   MovieDetails: { movie: any };
   CreateReview: { movie: any; review?: any };
   CastDetails: { personId: number; personName: string };
+  UserProfile: { userId: string };
+  FollowersList: { userId: string };
+  FollowingList: { userId: string };
   MyReviews: undefined;
   Watchlist: undefined;
   Settings: undefined;
@@ -93,6 +110,7 @@ const AuthStack = () => {
     >
       <AuthStackNav.Screen name="Login" component={LoginScreen} />
       <AuthStackNav.Screen name="Register" component={RegisterScreen} />
+      <AuthStackNav.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </AuthStackNav.Navigator>
   );
 };
@@ -163,6 +181,30 @@ const HomeStack = () => {
           gestureEnabled: true,
         }}
       />
+      <HomeStackNav.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{
+          title: "Profile",
+          gestureEnabled: true,
+        }}
+      />
+      <HomeStackNav.Screen
+        name="FollowersList"
+        component={FollowersListScreen}
+        options={{
+          title: "Followers",
+          gestureEnabled: true,
+        }}
+      />
+      <HomeStackNav.Screen
+        name="FollowingList"
+        component={FollowingListScreen}
+        options={{
+          title: "Following",
+          gestureEnabled: true,
+        }}
+      />
     </HomeStackNav.Navigator>
   );
 };
@@ -221,6 +263,30 @@ const SearchStack = () => {
           gestureEnabled: true,
         }}
       />
+      <SearchStackNav.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{
+          title: "Profile",
+          gestureEnabled: true,
+        }}
+      />
+      <SearchStackNav.Screen
+        name="FollowersList"
+        component={FollowersListScreen}
+        options={{
+          title: "Followers",
+          gestureEnabled: true,
+        }}
+      />
+      <SearchStackNav.Screen
+        name="FollowingList"
+        component={FollowingListScreen}
+        options={{
+          title: "Following",
+          gestureEnabled: true,
+        }}
+      />
     </SearchStackNav.Navigator>
   );
 };
@@ -276,6 +342,30 @@ const ActivityStack = () => {
         component={CastDetailsScreen}
         options={{
           headerShown: false,
+          gestureEnabled: true,
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{
+          title: "Profile",
+          gestureEnabled: true,
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="FollowersList"
+        component={FollowersListScreen}
+        options={{
+          title: "Followers",
+          gestureEnabled: true,
+        }}
+      />
+      <ActivityStackNav.Screen
+        name="FollowingList"
+        component={FollowingListScreen}
+        options={{
+          title: "Following",
           gestureEnabled: true,
         }}
       />
@@ -369,6 +459,30 @@ const AccountStack = () => {
         component={AboutScreen}
         options={{
           title: "About",
+        }}
+      />
+      <AccountStackNav.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{
+          title: "Profile",
+          gestureEnabled: true,
+        }}
+      />
+      <AccountStackNav.Screen
+        name="FollowersList"
+        component={FollowersListScreen}
+        options={{
+          title: "Followers",
+          gestureEnabled: true,
+        }}
+      />
+      <AccountStackNav.Screen
+        name="FollowingList"
+        component={FollowingListScreen}
+        options={{
+          title: "Following",
+          gestureEnabled: true,
         }}
       />
     </AccountStackNav.Navigator>
@@ -471,6 +585,7 @@ const AppNavigator: React.FC = () => {
   // Ensure primitive booleans
   const isLoading: boolean = !!auth.isLoading;
   const isAuthenticated: boolean = !!auth.isAuthenticated;
+  const isGuest: boolean = !!auth.isGuest;
 
   if (isLoading) {
     return <SplashScreen />;
@@ -478,7 +593,7 @@ const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
+      {isAuthenticated || isGuest ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );
 };

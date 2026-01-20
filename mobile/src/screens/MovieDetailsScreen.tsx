@@ -43,7 +43,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const [watchlistId, setWatchlistId] = useState<string | null>(null);
   const [trailerModalVisible, setTrailerModalVisible] = useState(false);
   const [trailerVideoId, setTrailerVideoId] = useState<string | null>(null);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isGuest, user } = useAuth();
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -107,12 +107,13 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   const loadReviews = async (movieData: any) => {
     try {
       setLoadingReviews(true);
+      const userId = user?._id || user?.id;
       let reviewsData;
       
       if (movieData?.tmdbId) {
-        reviewsData = await reviewsService.getByTmdbId(movieData.tmdbId);
+        reviewsData = await reviewsService.getByTmdbId(movieData.tmdbId, userId);
       } else if (movieData?._id) {
-        reviewsData = await reviewsService.getByMovie(movieData._id);
+        reviewsData = await reviewsService.getByMovie(movieData._id, userId);
       }
       
       setReviews(reviewsData?.reviews || []);
@@ -120,6 +121,131 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
       console.error('Error loading reviews:', error);
     } finally {
       setLoadingReviews(false);
+    }
+  };
+
+  const handleLikeReview = async (reviewId: string) => {
+    if (!isAuthenticated) {
+      Alert.alert('Login Required', 'Please login to like reviews');
+      return;
+    }
+
+    if (!reviewId) {
+      console.error('Review ID is missing');
+      return;
+    }
+
+    // Optimistically update UI
+    setReviews((prevReviews) =>
+      prevReviews.map((review) => {
+        if (review._id === reviewId) {
+          // Only update if not already liked
+          if (!review.isLiked) {
+            return {
+              ...review,
+              likes: (review.likes || 0) + 1,
+              isLiked: true,
+            };
+          }
+        }
+        return review;
+      })
+    );
+
+    try {
+      const response = await reviewsService.like(reviewId);
+      // Update with server response
+      setReviews((prevReviews) =>
+        prevReviews.map((review) =>
+          review._id === reviewId
+            ? { ...review, likes: response.likes, isLiked: true }
+            : review
+        )
+      );
+    } catch (error: any) {
+      console.error('Error liking review:', error);
+      
+      // Revert optimistic update on error
+      setReviews((prevReviews) =>
+        prevReviews.map((review) => {
+          if (review._id === reviewId) {
+            return {
+              ...review,
+              likes: Math.max(0, (review.likes || 0) - 1),
+              isLiked: false,
+            };
+          }
+          return review;
+        })
+      );
+
+      // Only show alert if it's not a "already liked" error
+      const errorMessage = error.response?.data?.error || 'Failed to like review';
+      if (!errorMessage.includes('already liked')) {
+        Alert.alert('Error', errorMessage);
+      }
+    }
+  };
+
+  const handleUnlikeReview = async (reviewId: string) => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (!reviewId) {
+      console.error('Review ID is missing');
+      return;
+    }
+
+    // Optimistically update UI
+    setReviews((prevReviews) =>
+      prevReviews.map((review) => {
+        if (review._id === reviewId) {
+          // Only update if currently liked
+          if (review.isLiked) {
+            return {
+              ...review,
+              likes: Math.max(0, (review.likes || 0) - 1),
+              isLiked: false,
+            };
+          }
+        }
+        return review;
+      })
+    );
+
+    try {
+      const response = await reviewsService.unlike(reviewId);
+      // Update with server response
+      setReviews((prevReviews) =>
+        prevReviews.map((review) =>
+          review._id === reviewId
+            ? { ...review, likes: response.likes, isLiked: false }
+            : review
+        )
+      );
+    } catch (error: any) {
+      console.error('Error unliking review:', error);
+      
+      // Revert optimistic update on error
+      setReviews((prevReviews) =>
+        prevReviews.map((review) => {
+          if (review._id === reviewId) {
+            return {
+              ...review,
+              likes: (review.likes || 0) + 1,
+              isLiked: true,
+            };
+          }
+          return review;
+        })
+      );
+
+      // Only show alert if it's not a "not found" error (user might have already unliked)
+      const errorMessage = error.response?.data?.error || 'Failed to unlike review';
+      if (!errorMessage.includes('not found')) {
+        Alert.alert('Error', errorMessage);
+      }
     }
   };
 
@@ -139,8 +265,20 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   };
 
   const handleToggleWatchlist = async () => {
-    if (!isAuthenticated) {
-      Alert.alert('Login Required', 'Please login to add movies to your watchlist');
+    if (!isAuthenticated || isGuest) {
+      Alert.alert(
+        'Login Required',
+        'Please login or sign up to add movies to your watchlist',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Login',
+            onPress: () => {
+              // Navigate to login
+            },
+          },
+        ]
+      );
       return;
     }
 
@@ -186,8 +324,20 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
   };
 
   const handleRateIt = () => {
-    if (!isAuthenticated) {
-      Alert.alert('Login Required', 'Please login to rate this movie');
+    if (!isAuthenticated || isGuest) {
+      Alert.alert(
+        'Login Required',
+        'Please login or sign up to rate this movie',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Login',
+            onPress: () => {
+              // Navigate to login
+            },
+          },
+        ]
+      );
       return;
     }
     handleWriteReview();
@@ -508,7 +658,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
               activeOpacity={0.8}
             >
               <View style={styles.primaryCTAContent}>
-                <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+                <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
                 <View style={styles.primaryCTAText}>
                   <AppText style={styles.primaryCTATitle}>Share Your Thoughts</AppText>
                   <AppText style={styles.primaryCTASubtitle}>
@@ -518,7 +668,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                   </AppText>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#fff" />
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
             </TouchableOpacity>
           )}
 
@@ -798,7 +948,17 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                     ]}
                   >
                     <View style={styles.reviewHeader}>
-                      <View style={styles.reviewAuthorContainer}>
+                      <TouchableOpacity
+                        style={styles.reviewAuthorContainer}
+                        onPress={() => {
+                          const reviewUserId = review.userId?._id || review.userId?.id;
+                          if (reviewUserId && !isUserReview) {
+                            navigation.navigate('UserProfile', { userId: reviewUserId });
+                          }
+                        }}
+                        disabled={isUserReview}
+                        activeOpacity={isUserReview ? 1 : 0.7}
+                      >
                         {review.userId?.avatar ? (
                           <Image
                             source={{ uri: review.userId.avatar }}
@@ -810,12 +970,17 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                           </View>
                         )}
                         <View>
-                          <AppText style={styles.reviewAuthor}>
-                            {review.userId?.username || 'Anonymous'}
+                          <View style={styles.reviewAuthorRow}>
+                            <AppText style={styles.reviewAuthor}>
+                              {review.userId?.username || 'Anonymous'}
+                            </AppText>
                             {isUserReview && (
                               <AppText style={styles.yourReviewBadge}> • You</AppText>
                             )}
-                          </AppText>
+                            {!isUserReview && (
+                              <Ionicons name="chevron-forward" size={14} color="#666" style={styles.profileChevron} />
+                            )}
+                          </View>
                           {review.createdAt && (
                             <AppText style={styles.reviewDate}>
                               {new Date(review.createdAt).toLocaleDateString('en-US', {
@@ -826,7 +991,7 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                             </AppText>
                           )}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                       <View
                         style={[
                           styles.reviewRatingBadge,
@@ -847,6 +1012,41 @@ const MovieDetailsScreen: React.FC<MovieDetailsScreenProps> = ({ navigation, rou
                       <AppText style={styles.reviewTitle}>{String(review.title || '')}</AppText>
                     )}
                     <AppText style={styles.reviewText}>{review.review || ''}</AppText>
+                    
+                    {/* Like Button */}
+                    <View style={styles.reviewActions}>
+                      <TouchableOpacity
+                        style={styles.likeButton}
+                        onPress={() => {
+                          const reviewId = review._id || review.id;
+                          if (!reviewId) {
+                            console.error('Review ID is missing');
+                            return;
+                          }
+                          if (review.isLiked) {
+                            handleUnlikeReview(reviewId);
+                          } else {
+                            handleLikeReview(reviewId);
+                          }
+                        }}
+                        activeOpacity={0.7}
+                        disabled={!isAuthenticated || !review._id}
+                      >
+                        <Ionicons
+                          name={review.isLiked ? "heart" : "heart-outline"}
+                          size={18}
+                          color={review.isLiked ? "#FF3B30" : "#999"}
+                        />
+                        <AppText
+                          style={[
+                            styles.likeButtonText,
+                            review.isLiked && styles.likeButtonTextActive,
+                          ]}
+                        >
+                          {review.likes || 0}
+                        </AppText>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })
@@ -1215,9 +1415,9 @@ const styles = StyleSheet.create({
   },
   primaryCTA: {
     backgroundColor: '#007AFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1231,19 +1431,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 16,
+    gap: 12,
   },
   primaryCTAText: {
     flex: 1,
   },
   primaryCTATitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   primaryCTASubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
   },
   ratingCard: {
@@ -1738,10 +1938,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  reviewAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   reviewAuthor: {
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  profileChevron: {
+    marginLeft: 4,
   },
   yourReviewBadge: {
     fontSize: 13,
@@ -1772,6 +1980,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  reviewActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+  },
+  likeButtonText: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
+  },
+  likeButtonTextActive: {
+    color: '#FF3B30',
   },
   floatingButton: {
     position: 'absolute',

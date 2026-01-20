@@ -21,6 +21,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isGuest: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (
     username: string,
@@ -29,6 +30,7 @@ interface AuthContextType {
     name?: string
   ) => Promise<void>;
   logout: () => Promise<void>;
+  continueAsGuest: () => void;
   updateUser: (userData: Partial<User>) => Promise<void>;
 }
 
@@ -40,6 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
 
   useEffect(() => {
     loadStoredAuth();
@@ -70,6 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     const response = await authService.login({ email, password });
     setUser(response.user);
     setToken(response.token);
+    setIsGuest(false);
   };
 
   const register = async (
@@ -86,12 +90,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     });
     setUser(response.user);
     setToken(response.token);
+    setIsGuest(false);
   };
 
   const logout = async () => {
     await authService.logout();
     setUser(null);
     setToken(null);
+    setIsGuest(false);
+  };
+
+  const continueAsGuest = () => {
+    setUser(null);
+    setToken(null);
+    setIsGuest(true);
   };
 
   const updateUser = async (userData: Partial<User>) => {
@@ -104,15 +116,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // Ensure primitive booleans - use !! to convert to boolean primitive
   const isLoadingValue: boolean = !!isLoading;
   const isAuthenticatedValue: boolean = !!(user && token);
+  const isGuestValue: boolean = !!isGuest;
 
   const value: AuthContextType = {
     user,
     token,
     isLoading: isLoadingValue,
     isAuthenticated: isAuthenticatedValue,
+    isGuest: isGuestValue,
     login,
     register,
     logout,
+    continueAsGuest,
     updateUser,
   };
 

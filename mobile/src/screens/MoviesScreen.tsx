@@ -633,11 +633,13 @@ const MoviesScreen: React.FC<MoviesScreenProps> = ({ navigation }) => {
   const renderMyReviewsContent = () => {
     if (loading && movies.length === 0) {
       return (
-        <View style={styles.list}>
-          {Array.from({ length: 9 }).map((_, index) => (
-            <MovieCardSkeleton key={index} width={CARD_WIDTH} />
-          ))}
-        </View>
+        <FlatList
+          data={Array.from({ length: 9 })}
+          renderItem={() => <MovieCardSkeleton width={CARD_WIDTH} />}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          numColumns={3}
+          contentContainerStyle={styles.list}
+        />
       );
     }
 

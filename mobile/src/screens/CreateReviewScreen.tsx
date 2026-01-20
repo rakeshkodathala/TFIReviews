@@ -18,11 +18,13 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewsService } from '../services/api';
 import { HomeStackParamList } from '../navigation/AppNavigator';
+import { useAuth } from '../context/AuthContext';
 
 type CreateReviewScreenProps = NativeStackScreenProps<HomeStackParamList, 'CreateReview'>;
 
 const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, route }) => {
   const { movie, review: existingReview } = route.params;
+  const { isAuthenticated, isGuest } = useAuth();
   const [rating, setRating] = useState(existingReview?.rating || 5);
   const [review, setReview] = useState(existingReview?.review || '');
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,22 @@ const CreateReviewScreen: React.FC<CreateReviewScreenProps> = ({ navigation, rou
   const reviewLength = review.length;
   const minReviewLength = 10;
   const maxReviewLength = 1000;
+
+  // Redirect guests to login
+  useEffect(() => {
+    if (!isAuthenticated || isGuest) {
+      Alert.alert(
+        'Login Required',
+        'Please login or sign up to write a review',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    }
+  }, [isAuthenticated, isGuest, navigation]);
 
   useEffect(() => {
     if (showSuccessToast) {

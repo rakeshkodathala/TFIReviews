@@ -19,8 +19,8 @@ router.get('/search', async (req: Request<{}, {}, {}, MovieSearchParams>, res: R
 
     const searchParams: MovieSearchParams = {
       query,
-      year: year ? parseInt(year as string) : undefined,
-      page: page ? parseInt(page as string) : 1,
+      year: year ? parseInt(year as unknown as string) : undefined,
+      page: page ? parseInt(page as unknown as string) : 1,
       language: language || 'te', // Telugu by default
       ...otherParams,
     };

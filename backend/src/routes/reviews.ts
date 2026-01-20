@@ -1,5 +1,7 @@
 import express, { Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Review from '../models/Review';
+import ReviewLike from '../models/ReviewLike';
 import Movie from '../models/Movie';
 import movieApiService from '../services/movieApi';
 import { IReview, IMovie, AuthRequest } from '../types';
@@ -10,20 +12,49 @@ const router: Router = express.Router();
 interface ReviewQuery {
   page?: string;
   limit?: string;
+  userId?: string;
 }
 
-interface CreateReviewBody {
-  movieId?: string; // MongoDB movie ID
-  tmdbId?: string | number; // TMDB movie ID (alternative)
-  rating: number;
-  title?: string;
-  review: string;
+// Helper function to add like count and user liked status to reviews
+async function enrichReviewsWithLikes(reviews: any[], userId?: string) {
+  if (reviews.length === 0) return reviews;
+  
+  const reviewIds = reviews.map((r: any) => new mongoose.Types.ObjectId(r._id.toString()));
+  
+  // Get like counts for all reviews
+  const likeCounts = await ReviewLike.aggregate([
+    { $match: { reviewId: { $in: reviewIds } } },
+    { $group: { _id: '$reviewId', count: { $sum: 1 } } }
+  ]);
+  
+  const likeCountMap = new Map(
+    likeCounts.map((item: any) => [item._id.toString(), item.count])
+  );
+  
+  // Get user's liked reviews if authenticated
+  let userLikedReviews: string[] = [];
+  if (userId) {
+    const userLikes = await ReviewLike.find({ 
+      userId: new mongoose.Types.ObjectId(userId), 
+      reviewId: { $in: reviewIds } 
+    }).lean();
+    userLikedReviews = userLikes.map((like: any) => like.reviewId.toString());
+  }
+  
+  // Enrich reviews with like data
+  return reviews.map((review: any) => ({
+    ...review,
+    likes: likeCountMap.get(review._id.toString()) || 0,
+    isLiked: userId ? userLikedReviews.includes(review._id.toString()) : false,
+  }));
 }
+
+// CreateReviewBody interface removed - using req.body directly
 
 // Get all reviews (for Activity feed)
 router.get('/', async (req: Request<{}, {}, {}, ReviewQuery>, res: Response) => {
   try {
-    const { page = '1', limit = '50' } = req.query;
+    const { page = '1', limit = '50', userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const reviews = await Review.find({})
@@ -36,9 +67,12 @@ router.get('/', async (req: Request<{}, {}, {}, ReviewQuery>, res: Response) => 
       .lean();
 
     const total: number = await Review.countDocuments({});
+    
+    // Enrich with like data
+    const enrichedReviews = await enrichReviewsWithLikes(reviews, userId);
 
     res.json({
-      reviews,
+      reviews: enrichedReviews,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -55,7 +89,7 @@ router.get('/', async (req: Request<{}, {}, {}, ReviewQuery>, res: Response) => 
 // Get all reviews for a movie (by MongoDB ID or TMDB ID)
 router.get('/movie/:movieId', async (req: Request<{ movieId: string }, {}, {}, ReviewQuery>, res: Response) => {
   try {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const { movieId } = req.params;
 
@@ -93,9 +127,12 @@ router.get('/movie/:movieId', async (req: Request<{ movieId: string }, {}, {}, R
       .lean();
 
     const total: number = await Review.countDocuments(query);
+    
+    // Enrich with like data
+    const enrichedReviews = await enrichReviewsWithLikes(reviews, userId as string | undefined);
 
     res.json({
-      reviews,
+      reviews: enrichedReviews,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -111,7 +148,7 @@ router.get('/movie/:movieId', async (req: Request<{ movieId: string }, {}, {}, R
 // Get reviews by TMDB ID
 router.get('/tmdb/:tmdbId', async (req: Request<{ tmdbId: string }, {}, {}, ReviewQuery>, res: Response) => {
   try {
-    const { page = '1', limit = '20' } = req.query;
+    const { page = '1', limit = '20', userId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const { tmdbId } = req.params;
 
@@ -139,9 +176,12 @@ router.get('/tmdb/:tmdbId', async (req: Request<{ tmdbId: string }, {}, {}, Revi
       .lean();
 
     const total: number = await Review.countDocuments({ movieId: movie._id });
+    
+    // Enrich with like data
+    const enrichedReviews = await enrichReviewsWithLikes(reviews, userId as string | undefined);
 
     res.json({
-      reviews,
+      reviews: enrichedReviews,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -155,8 +195,10 @@ router.get('/tmdb/:tmdbId', async (req: Request<{ tmdbId: string }, {}, {}, Revi
 });
 
 // Get single review
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request<{ id: string }, {}, {}, ReviewQuery>, res: Response) => {
   try {
+    const { userId } = req.query;
+    
     const review = await Review.findById(req.params.id)
       .populate('userId', 'username name avatar')
       .populate('movieId', 'title posterUrl tmdbId')
@@ -167,7 +209,9 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Review not found' });
     }
 
-    res.json(review);
+    // Enrich with like data
+    const enrichedReviews = await enrichReviewsWithLikes([review], userId);
+    res.json(enrichedReviews[0]);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -204,7 +248,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
             : 0;
           
           // Update TMDB rating and recalculate combined rating
-          const allReviews: IReview[] = await Review.find({ movieId: movie._id.toString() }).lean();
+          const allReviews = await Review.find({ movieId: movie._id.toString() }).lean() as unknown as IReview[];
           let combinedRating = tmdbRating;
           
           if (allReviews.length > 0) {
@@ -234,7 +278,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     // Check if user already reviewed this movie
-    const existingReview: IReview | null = await Review.findOne({ movieId: dbMovieId, userId }).lean();
+    const existingReview = await Review.findOne({ movieId: dbMovieId, userId }).lean() as unknown as IReview | null;
     if (existingReview) {
       return res.status(400).json({ error: 'You have already reviewed this movie' });
     }
@@ -243,9 +287,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     await newReview.save();
 
     // Update movie rating and review count (combine TMDB rating with user reviews)
-    const movie: IMovie | null = await Movie.findById(dbMovieId).lean();
+    const movie = await Movie.findById(dbMovieId).lean() as unknown as IMovie | null;
     if (movie) {
-      const allReviews: IReview[] = await Review.find({ movieId: dbMovieId }).lean();
+      const allReviews = await Review.find({ movieId: dbMovieId }).lean() as unknown as IReview[];
       const tmdbRating = movie.tmdbRating || 0;
       
       let combinedRating = tmdbRating; // Default to TMDB rating
@@ -286,7 +330,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     // Check if review exists and belongs to user
-    const existingReview: IReview | null = await Review.findById(req.params.id).lean();
+    const existingReview = await Review.findById(req.params.id).lean() as unknown as IReview | null;
     if (!existingReview) {
       return res.status(404).json({ error: 'Review not found' });
     }
@@ -295,19 +339,23 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'You can only update your own reviews' });
     }
 
-    const review: IReview | null = await Review.findByIdAndUpdate(
+    const review = await Review.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: new Date() },
       { new: true, runValidators: true }
     )
       .populate('userId', 'username name avatar')
       .select('-__v')
-      .lean();
+      .lean() as unknown as IReview | null;
+
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
 
     // Update movie rating (combine TMDB rating with user reviews)
-    const movie: IMovie | null = await Movie.findById(review.movieId).lean();
+    const movie = await Movie.findById(review.movieId).lean() as unknown as IMovie | null;
     if (movie) {
-      const allReviews: IReview[] = await Review.find({ movieId: review.movieId }).lean();
+      const allReviews = await Review.find({ movieId: review.movieId }).lean() as unknown as IReview[];
       const tmdbRating = movie.tmdbRating || 0;
       
       let combinedRating = tmdbRating; // Default to TMDB rating
@@ -341,7 +389,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     // Check if review exists and belongs to user
-    const existingReview: IReview | null = await Review.findById(req.params.id).lean();
+    const existingReview = await Review.findById(req.params.id).lean() as unknown as IReview | null;
     if (!existingReview) {
       return res.status(404).json({ error: 'Review not found' });
     }
@@ -350,12 +398,16 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'You can only delete your own reviews' });
     }
 
-    const review: IReview | null = await Review.findByIdAndDelete(req.params.id).lean();
+    const review = await Review.findByIdAndDelete(req.params.id).lean() as unknown as IReview | null;
+    
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
 
     // Update movie rating (combine TMDB rating with user reviews)
-    const movie: IMovie | null = await Movie.findById(review.movieId).lean();
+    const movie = await Movie.findById(review.movieId).lean() as unknown as IMovie | null;
     if (movie) {
-      const allReviews: IReview[] = await Review.find({ movieId: review.movieId }).lean();
+      const allReviews = await Review.find({ movieId: review.movieId }).lean() as unknown as IReview[];
       const tmdbRating = movie.tmdbRating || 0;
       
       let combinedRating = tmdbRating; // Default to TMDB rating if no reviews
@@ -374,7 +426,120 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.json({ message: 'Review deleted successfully' });
+    return res.json({ message: 'Review deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Like a review
+router.post('/:id/like', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const reviewId = req.params.id;
+    
+    // Check if review exists
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Check if user already liked this review
+    const existingLike = await ReviewLike.findOne({ reviewId, userId });
+    if (existingLike) {
+      return res.status(400).json({ error: 'You have already liked this review' });
+    }
+
+    // Create like
+    const like = new ReviewLike({ reviewId, userId });
+    await like.save();
+
+    // Update review likes count
+    await Review.findByIdAndUpdate(reviewId, { $inc: { likes: 1 } });
+
+    // Get updated like count
+    const likeCount = await ReviewLike.countDocuments({ reviewId });
+
+    res.json({
+      message: 'Review liked successfully',
+      likes: likeCount,
+      isLiked: true,
+    });
+  } catch (error: any) {
+    if (error.code === 11000) {
+      // Duplicate key error (already liked)
+      return res.status(400).json({ error: 'You have already liked this review' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unlike a review
+router.delete('/:id/like', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const reviewId = req.params.id;
+    
+    // Check if review exists
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Remove like
+    const deletedLike = await ReviewLike.findOneAndDelete({ reviewId, userId });
+    if (!deletedLike) {
+      return res.status(404).json({ error: 'Like not found' });
+    }
+
+    // Update review likes count (ensure it doesn't go below 0)
+    await Review.findByIdAndUpdate(reviewId, { $inc: { likes: -1 } });
+
+    // Get updated like count
+    const likeCount = await ReviewLike.countDocuments({ reviewId });
+
+    res.json({
+      message: 'Review unliked successfully',
+      likes: likeCount,
+      isLiked: false,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get users who liked a review
+router.get('/:id/likes', async (req: Request, res: Response) => {
+  try {
+    const reviewId = req.params.id;
+    
+    // Check if review exists
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    const likes = await ReviewLike.find({ reviewId })
+      .populate('userId', 'username name avatar')
+      .sort({ createdAt: -1 })
+      .select('-__v')
+      .lean();
+
+    res.json({
+      likes: likes.map((like: any) => ({
+        user: like.userId,
+        createdAt: like.createdAt,
+      })),
+      count: likes.length,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
