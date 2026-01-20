@@ -66,8 +66,10 @@ If you're using MongoDB Atlas (free cloud database):
 ### Step 5: Complete the Connection String
 Replace `<username>` and `<password>` with your database user credentials:
 ```
-mongodb+srv://myuser:mypassword@cluster0.xxxxx.mongodb.net/tfireviews?retryWrites=true&w=majority
+mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/tfireviews?retryWrites=true&w=majority
 ```
+
+**⚠️ SECURITY NOTE**: Never commit real credentials to Git! Always use environment variables.
 
 **Note**: Add your database name (`tfireviews`) before the `?` if you want a specific database.
 
@@ -98,7 +100,9 @@ In Railway/Render, add this variable:
 
 | Name | Value |
 |------|-------|
-| `MONGODB_URI` | `mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/tfireviews?retryWrites=true&w=majority` |
+| `MONGODB_URI` | `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/tfireviews?retryWrites=true&w=majority` |
+
+**⚠️ Replace `<username>` and `<password>` with your actual credentials**
 
 **Or for Railway MongoDB:**
 | Name | Value |

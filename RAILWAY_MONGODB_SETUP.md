@@ -2,10 +2,9 @@
 
 ## Your MongoDB Connection String
 
-You have the MongoDB connection string from Railway:
-```
-mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017
-```
+**⚠️ SECURITY**: Never commit real credentials to Git! Always get the connection string from Railway dashboard.
+
+Get your MongoDB connection string from Railway:
 
 ---
 
@@ -20,7 +19,9 @@ mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017
 2. Click **"+ New Variable"** button
 3. Add:
    - **Name**: `MONGODB_URI`
-   - **Value**: `mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews`
+   - **Value**: `mongodb://mongo:<password>@mongodb.railway.internal:27017/tfireviews`
+   
+   **⚠️ Replace `<password>` with the actual password from Railway MongoDB service variables**
    
    **Note**: I added `/tfireviews` at the end to specify your database name. If you want a different database name, change it.
 
@@ -42,8 +43,10 @@ mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017
 If you want to specify the database name explicitly, use:
 
 ```
-mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews
+mongodb://mongo:<password>@mongodb.railway.internal:27017/tfireviews
 ```
+
+**⚠️ Replace `<password>` with the actual password from Railway**
 
 This will:
 - Connect to MongoDB
@@ -57,7 +60,9 @@ In your backend service, you should have:
 
 | Variable Name | Value |
 |---------------|-------|
-| `MONGODB_URI` | `mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews` |
+| `MONGODB_URI` | `mongodb://mongo:<password>@mongodb.railway.internal:27017/tfireviews` |
+
+**⚠️ Replace `<password>` with the actual password from Railway MongoDB service**
 
 ---
 
@@ -108,7 +113,7 @@ After adding the environment variable:
 
 - [ ] Backend service created in Railway
 - [ ] `MONGODB_URI` environment variable added
-- [ ] Value: `mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews`
+- [ ] Value: Get from Railway MongoDB service → Variables tab → Copy `MONGO_URL`, add `/tfireviews` at the end
 - [ ] Other environment variables added (JWT_SECRET, TMDB_API_KEY, etc.)
 - [ ] Backend service restarted
 - [ ] Check logs for "✅ Connected to MongoDB"

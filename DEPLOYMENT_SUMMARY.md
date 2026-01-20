@@ -53,7 +53,7 @@ Found some TypeScript type errors. These are **type errors, not runtime errors**
 Before deploying, add these environment variables to your Railway backend service:
 
 ### **Critical (Must Have):**
-1. `MONGODB_URI` = `mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews`
+1. `MONGODB_URI` = (Get from Railway MongoDB service → Variables tab → Copy `MONGO_URL`, then add `/tfireviews` at the end)
 2. `JWT_SECRET` = (generate random string - see below)
 3. `EXTERNAL_MOVIE_API_KEY` = (your TMDB API key)
 4. `NODE_ENV` = `production`

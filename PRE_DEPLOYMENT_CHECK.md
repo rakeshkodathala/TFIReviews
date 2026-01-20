@@ -98,7 +98,7 @@ Before deploying to Railway:
 - [x] Backend runs with `npm run start`
 - [x] No hardcoded localhost dependencies (except fallbacks)
 - [x] All secrets use environment variables
-- [ ] **Set `MONGODB_URI` in Railway** (you have this: `mongodb://mongo:pvHzLMQATkvodPLJyLnyWpSrGxyVOdsM@mongodb.railway.internal:27017/tfireviews`)
+- [ ] **Set `MONGODB_URI` in Railway** (get from Railway MongoDB service → Variables tab → Copy `MONGO_URL`)
 - [ ] **Set `JWT_SECRET` in Railway** (generate random string)
 - [ ] **Set `EXTERNAL_MOVIE_API_KEY` in Railway** (your TMDB key)
 - [ ] **Set `NODE_ENV=production` in Railway**
